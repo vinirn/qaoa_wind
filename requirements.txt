@@ -1,0 +1,20 @@
+# QAOA para Otimização de Turbinas Eólicas
+# Requisitos para executar o algoritmo quântico
+
+# Core Qiskit packages
+qiskit>=2.1.0
+qiskit-aer>=0.17.0
+
+# Dependências científicas
+numpy>=2.0.0
+scipy>=1.15.0
+
+# Otimização (já incluída no scipy, mas explícita para clareza)
+# scipy.optimize é usada para otimização dos parâmetros QAOA
+
+# Dependências automáticas do Qiskit (listadas para referência)
+# rustworkx>=0.16.0  # Estruturas de dados para grafos
+# dill>=0.4.0        # Serialização avançada
+# stevedore>=5.4.0   # Plugin loading
+# psutil>=7.0.0      # Informações do sistema
+# python-dateutil>=2.9.0  # Manipulação de datas

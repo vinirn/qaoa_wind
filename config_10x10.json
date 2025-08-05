@@ -1,0 +1,35 @@
+{
+  "grid": {
+    "rows": 10,
+    "cols": 10,
+    "description": "Grid 10x10 para 15 turbinas - problema de grande escala"
+  },
+  "wind": {
+    "direction": [0, 1],
+    "description": "Direção do vento: oeste→leste"
+  },
+  "penalties": {
+    "max_penalty": 5,
+    "decay_factor": 0.8,
+    "description": "Penalidade alta com decaimento suave para grid grande"
+  },
+  "energy_production": {
+    "mode": "random",
+    "random_range": [3.5, 7.0],
+    "description": "Energia variável para simular terreno heterogêneo"
+  },
+  "qaoa": {
+    "layers": 3,
+    "max_iterations": 200,
+    "optimizer": "COBYLA",
+    "shots": 4096,
+    "description": "Configuração robusta para problema complexo"
+  },
+  "constraints": {
+    "max_turbines": 15,
+    "min_turbines": 15,
+    "enforce_constraints": true,
+    "constraint_penalty": 100.0,
+    "description": "Exatamente 15 turbinas no grid 10x10 - restrição ATIVA (penalidade alta)"
+  }
+}

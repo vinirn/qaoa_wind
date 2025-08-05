@@ -1,0 +1,34 @@
+{
+  "grid": {
+    "rows": 3,
+    "cols": 3,
+    "description": "Grid 3x3 - mais complexo"
+  },
+  "wind": {
+    "direction": [0, 1],
+    "description": "Direção do vento: oeste→leste"
+  },
+  "penalties": {
+    "max_penalty": 4,
+    "decay_factor": 1,
+    "description": "Penalidade maior para grid maior"
+  },
+  "energy_production": {
+    "mode": "uniform",
+    "uniform_value": 4.5,
+    "description": "Energia constante para todas as posições"
+  },
+  "qaoa": {
+    "layers": 4,
+    "max_iterations": 200,
+    "optimizer": "COBYLA",
+    "shots": 2048
+  },
+  "constraints": {
+    "max_turbines": 3,
+    "min_turbines": 3,
+    "enforce_constraints": true,
+    "constraint_penalty": 500.0,
+    "description": "Exatamente 3 turbinas (restrição ATIVA)"
+  }
+}

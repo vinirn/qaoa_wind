@@ -1,0 +1,34 @@
+{
+  "grid": {
+    "rows": 4,
+    "cols": 2,
+    "description": "Grid vertical 4x2"
+  },
+  "wind": {
+    "direction": [1, 0],
+    "description": "Vento norte→sul"
+  },
+  "penalties": {
+    "max_penalty": 3,
+    "decay_factor": 0.5,
+    "description": "Decaimento mais suave"
+  },
+  "energy_production": {
+    "mode": "uniform",
+    "uniform_value": 4.5,
+    "description": "Todas as posições com mesma energia"
+  },
+  "qaoa": {
+    "layers": 1,
+    "max_iterations": 50,
+    "optimizer": "COBYLA", 
+    "shots": 1024
+  },
+  "constraints": {
+    "max_turbines": null,
+    "min_turbines": null,
+    "enforce_constraints": false,
+    "constraint_penalty": 10.0,
+    "description": "Sem restrições de número - livre escolha"
+  }
+}

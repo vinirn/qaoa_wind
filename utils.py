@@ -1,6 +1,7 @@
 import argparse
 import os
 import json
+import sys
 
 def parse_arguments():
     """Processa argumentos da linha de comando"""
@@ -69,3 +70,144 @@ def load_config(config_file):
     with open(config_file, 'r', encoding='utf-8') as f:
         config = json.load(f)
     return config
+
+def get_config_file():
+    """Determina qual arquivo de configuração usar"""
+    if len(sys.argv) > 1:
+        # Se há argumentos, processar normalmente
+        args = parse_arguments()
+        
+        # Se solicitado, listar configurações e sair
+        if args.list_configs:
+            list_available_configs()
+            sys.exit(0)
+        
+        # Verificar se arquivo de configuração existe
+        if not os.path.exists(args.config):
+            print(f"❌ Arquivo de configuração não encontrado: {args.config}")
+            print("\nArquivos disponíveis:")
+            list_available_configs()
+            sys.exit(1)
+        
+        print(f"🔧 Usando configuração: {args.config}")
+        return args.config
+    else:
+        # Sem argumentos, usar padrão
+        return "config.json"
+
+def validate_constraints(solution, optimizer):
+    """Valida se uma solução atende às restrições"""
+    num_turbines = sum(solution)
+    
+    violations = []
+    if optimizer.enforce_constraints:
+        if num_turbines < optimizer.min_turbines:
+            deficit = optimizer.min_turbines - num_turbines
+            violations.append(f"❌ MUITO POUCAS turbinas: {num_turbines} < {optimizer.min_turbines} (faltam {deficit})")
+        if num_turbines > optimizer.max_turbines:
+            excess = num_turbines - optimizer.max_turbines
+            violations.append(f"❌ MUITAS turbinas: {num_turbines} > {optimizer.max_turbines} (excesso de {excess})")
+        if len(violations) == 0:
+            violations.append(f"✅ Restrições ATENDIDAS: {num_turbines} turbinas está no intervalo [{optimizer.min_turbines}, {optimizer.max_turbines}]")
+    else:
+        violations.append(f"⚠️  Sem restrições ativas: {num_turbines} turbinas (qualquer número permitido)")
+    
+    return violations
+
+def evaluate_solution(bitstring, score, wake_penalties, optimizer):
+    """Avalia uma solução clássica considerando restrições"""
+    x = [int(bit) for bit in bitstring]
+    
+    # Score total
+    total_score = sum(x[i] * score[i] for i in range(optimizer.n_positions))
+    
+    # Penalidades de esteira
+    wake_penalty = sum(x[i] * x[j] * penalty 
+                      for (i, j), penalty in wake_penalties.items())
+    
+    # Penalidades de restrições
+    constraint_penalty = 0
+    if optimizer.enforce_constraints:
+        num_turbines = sum(x)
+        if num_turbines < optimizer.min_turbines:
+            constraint_penalty += optimizer.constraint_penalty * (optimizer.min_turbines - num_turbines)
+        if num_turbines > optimizer.max_turbines:
+            constraint_penalty += optimizer.constraint_penalty * (num_turbines - optimizer.max_turbines)
+    
+    return total_score - wake_penalty - constraint_penalty
+
+def show_active_penalties(solution, wake_penalties, positions_coords):
+    """Mostra apenas as penalidades ativas para a solução atual"""
+    active_penalties = []
+    total_penalty = 0
+    
+    for (i, j), penalty in wake_penalties.items():
+        if solution[i] == 1 and solution[j] == 1:  # Ambas turbinas instaladas
+            coord1 = positions_coords[i]
+            coord2 = positions_coords[j]
+            active_penalties.append((coord1, coord2, penalty))
+            total_penalty += penalty
+    
+    if active_penalties:
+        print(f"\n🌪️  INTERFERÊNCIAS ATIVAS:")
+        for coord1, coord2, penalty in active_penalties:
+            print(f"   {coord1} → {coord2}: penalidade {penalty}")
+        print(f"   Total de penalidades: {total_penalty}")
+    else:
+        print(f"\n✅ NENHUMA INTERFERÊNCIA ATIVA (configuração otimizada!)")
+    
+    return total_penalty
+
+def bitstring_to_grid(bitstring):
+    """Converte bitstring para representação de grid"""
+    # Qiskit inverte a ordem dos bits
+    solution = [int(bit) for bit in reversed(bitstring)]
+    return solution
+
+def display_grid(solution, optimizer, title=None):
+    """Exibe o grid de forma visual dinamicamente"""
+    if title is None:
+        title = f"Grid {optimizer.rows}x{optimizer.cols}"
+        
+    print(f"\n{title}:")
+    
+    # Cabeçalho das colunas
+    header = "    " + "".join(f"Col {c:2d} " for c in range(optimizer.cols))
+    print(header)
+    
+    # Linha superior da tabela
+    line_top = "   ┌" + "─────┬" * (optimizer.cols - 1) + "─────┐"
+    print(line_top)
+    
+    # Linhas do grid
+    for row in range(optimizer.rows):
+        # Valores da linha
+        values = []
+        for col in range(optimizer.cols):
+            i = row * optimizer.cols + col
+            values.append(f"  {solution[i]}  ")
+        
+        row_line = f"L{row} │" + "│".join(values) + "│"
+        print(row_line)
+        
+        # Linha separadora (exceto na última linha)
+        if row < optimizer.rows - 1:
+            line_mid = "   ├" + "─────┼" * (optimizer.cols - 1) + "─────┤"
+            print(line_mid)
+    
+    # Linha inferior da tabela
+    line_bottom = "   └" + "─────┴" * (optimizer.cols - 1) + "─────┘"
+    print(line_bottom)
+    
+    # Mostrar coordenadas das turbinas instaladas
+    installed = []
+    for i in range(optimizer.n_positions):
+        if solution[i] == 1:
+            row = i // optimizer.cols
+            col = i % optimizer.cols
+            installed.append(f"({row},{col})")
+    
+    if installed:
+        print(f"Turbinas em: {', '.join(installed)}")
+    else:
+        print("Nenhuma turbina instalada")

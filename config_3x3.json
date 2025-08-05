@@ -13,22 +13,22 @@
     "decay_factor": 1,
     "description": "Penalidade maior para grid maior"
   },
-  "energy_production": {
+  "score": {
     "mode": "uniform",
     "uniform_value": 4.5,
-    "description": "Energia constante para todas as posições"
+    "description": "Score constante para todas as posições"
   },
   "qaoa": {
-    "layers": 4,
-    "max_iterations": 200,
+    "layers": 2,
+    "max_iterations": 100,
     "optimizer": "COBYLA",
-    "shots": 2048
+    "shots": 16
   },
   "constraints": {
     "max_turbines": 3,
     "min_turbines": 3,
     "enforce_constraints": true,
-    "constraint_penalty": 500.0,
+    "constraint_penalty": 20.0,
     "description": "Exatamente 3 turbinas (restrição ATIVA)"
   }
 }

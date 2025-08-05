@@ -13,10 +13,10 @@
     "decay_factor": 1,
     "description": "Penalidade moderada para grid médio"
   },
-  "energy_production": {
+  "score": {
     "mode": "uniform",
     "uniform_value": 4.5,
-    "description": "Energia constante para todas as posições"
+    "description": "Score constante para todas as posições"
   },
   "qaoa": {
     "layers": 2,
@@ -29,7 +29,7 @@
     "max_turbines": 9,
     "min_turbines": 7,
     "enforce_constraints": true,
-    "constraint_penalty": 30.0,
+    "constraint_penalty": 25.0,
     "description": "Entre 6 e 10 turbinas - restrições ATIVAS com flexibilidade"
   }
 }

@@ -13,10 +13,10 @@
     "decay_factor": 0.8,
     "description": "Penalidade alta com decaimento suave para grid grande"
   },
-  "energy_production": {
+  "score": {
     "mode": "random",
     "random_range": [3.5, 7.0],
-    "description": "Energia variável para simular terreno heterogêneo"
+    "description": "Score variável para simular terreno heterogêneo"
   },
   "qaoa": {
     "layers": 3,
@@ -29,7 +29,7 @@
     "max_turbines": 15,
     "min_turbines": 15,
     "enforce_constraints": true,
-    "constraint_penalty": 100.0,
+    "constraint_penalty": 35.0,
     "description": "Exatamente 15 turbinas no grid 10x10 - restrição ATIVA (penalidade alta)"
   }
 }

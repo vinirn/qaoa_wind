@@ -29,7 +29,7 @@ The system is fully configurable via JSON files:
 ### Configuration Parameters:
 - **Grid size**: rows, cols
 - **Wind direction**: [0,1] = west→east, [1,0] = north→south  
-- **Energy production**: fixed values, random, or uniform
+- **Score values**: fixed values, random, or uniform
 - **Penalties**: max penalty and decay factor
 - **QAOA settings**: layers, iterations, optimizer
 - **Constraints**: min/max number of turbines
@@ -58,7 +58,7 @@ Main dependencies:
 
 The codebase consists of a single file `qaoa_turbinas.py` that:
 
-1. **Problem Setup**: Defines a 2x3 grid for turbine placement with energy production values and wake penalty matrix
+1. **Problem Setup**: Defines a 2x3 grid for turbine placement with score values and wake penalty matrix
 2. **QUBO Formulation**: Converts the optimization problem to Quadratic Unconstrained Binary Optimization format
 3. **QAOA Execution**: Uses quantum approximate optimization with COBYLA classical optimizer
 4. **Results**: Outputs optimal turbine positions and objective function value
@@ -66,11 +66,11 @@ The codebase consists of a single file `qaoa_turbinas.py` that:
 ### Key Components
 
 - **Grid Layout**: 2x3 positions (x0-x5) representing potential turbine locations
-- **Energy Array**: Expected energy production for each position
+- **Score Array**: Expected score value for each position
 - **Wake Penalties**: Dictionary defining interference penalties between turbine pairs aligned with wind direction
 - **QAOA Configuration**: Single repetition (reps=1) with AerEstimator for quantum simulation
 
-The problem maximizes total energy production while minimizing wake interference penalties through binary decision variables (1 = turbine installed, 0 = empty position).
+The problem maximizes total score while minimizing wake interference penalties through binary decision variables (1 = turbine installed, 0 = empty position).
 
 ## QAOA Algorithm Details
 
@@ -94,7 +94,7 @@ Where:
 1. **Initial State**: All turbine configurations are equally probable
 2. **Cost Evolution**: Parameter γ controls how much the problem influences the state
 3. **Mixing**: Parameter β controls how much we "mix" between solutions
-4. **Result**: Configurations with better energy yield have higher measurement probability
+4. **Result**: Configurations with better score yield have higher measurement probability
 
 #### Circuit Structure:
 ```

@@ -9,7 +9,9 @@ import numpy as np
 import json
 import os
 import sys
-from utils import parse_arguments, list_available_configs, load_config
+from utils import (parse_arguments, list_available_configs, load_config, get_config_file,
+                   validate_constraints, evaluate_solution, show_active_penalties, 
+                   bitstring_to_grid, display_grid)
 from qiskit.quantum_info import SparsePauliOp
 from qiskit.circuit.library import QAOAAnsatz
 from qiskit_aer.primitives import Estimator
@@ -62,7 +64,7 @@ class QAOATurbineOptimizer:
             print(f"   📊 Mínimo: 0 turbinas (sem restrição)")
             print(f"   📊 Máximo: {self.n_positions} turbinas (sem restrição)")
         self.setup_grid()
-        self.setup_energy_production()
+        self.setup_score()
         self.wake_penalties = self.calculate_wake_penalties()
         
         
@@ -74,27 +76,27 @@ class QAOATurbineOptimizer:
             col = i % self.cols
             self.positions_coords[i] = (row, col)
             
-    def setup_energy_production(self):
-        """Configura a produção de energia por posição"""
-        energy_config = self.config["energy_production"]
-        mode = energy_config["mode"]
+    def setup_score(self):
+        """Configura o score por posição"""
+        score_config = self.config["score"]
+        mode = score_config["mode"]
         
         if mode == "fixed":
-            self.energy = energy_config["values"][:self.n_positions]
+            self.score = score_config["values"][:self.n_positions]
             # Preencher com zeros se necessário
-            while len(self.energy) < self.n_positions:
-                self.energy.append(0.0)
+            while len(self.score) < self.n_positions:
+                self.score.append(0.0)
         elif mode == "random":
-            min_val, max_val = energy_config["random_range"]
+            min_val, max_val = score_config["random_range"]
             np.random.seed(42)  # Seed fixo para reprodutibilidade
-            self.energy = np.random.uniform(min_val, max_val, self.n_positions).tolist()
+            self.score = np.random.uniform(min_val, max_val, self.n_positions).tolist()
         elif mode == "uniform":
-            uniform_value = energy_config.get("uniform_value", 4.0)
-            self.energy = [uniform_value] * self.n_positions
+            uniform_value = score_config.get("uniform_value", 4.0)
+            self.score = [uniform_value] * self.n_positions
         else:
-            raise ValueError(f"Modo de energia inválido: {mode}")
+            raise ValueError(f"Modo de score inválido: {mode}")
             
-        print(f"⚡ Energia por posição: {[f'{e:.1f}' for e in self.energy]}")
+        print(f"💯 Score por posição: {[f'{s:.1f}' for s in self.score]}")
         
     def display_interference_matrix(self):
         """Exibe TODAS as combinações de turbinas, incluindo penalidades zero"""
@@ -203,35 +205,12 @@ class QAOATurbineOptimizer:
 
 
 
-def get_config_file():
-    """Determina qual arquivo de configuração usar"""
-    if len(sys.argv) > 1:
-        # Se há argumentos, processar normalmente
-        args = parse_arguments()
-        
-        # Se solicitado, listar configurações e sair
-        if args.list_configs:
-            list_available_configs()
-            sys.exit(0)
-        
-        # Verificar se arquivo de configuração existe
-        if not os.path.exists(args.config):
-            print(f"❌ Arquivo de configuração não encontrado: {args.config}")
-            print("\nArquivos disponíveis:")
-            list_available_configs()
-            sys.exit(1)
-        
-        print(f"🔧 Usando configuração: {args.config}")
-        return args.config
-    else:
-        # Sem argumentos, usar padrão
-        return "config.json"
 
 def run_optimization(optimizer):
     """Executa a otimização QAOA"""
     # Definir variáveis globais para compatibilidade
-    global energy, positions_coords, wake_penalties
-    energy = optimizer.energy
+    global score, positions_coords, wake_penalties
+    score = optimizer.score
     positions_coords = optimizer.positions_coords
     wake_penalties = optimizer.wake_penalties
 
@@ -250,7 +229,7 @@ def run_optimization(optimizer):
 
     # Executar QAOA
     try:
-        counts, optimal_value = run_qaoa(p=1, max_iter=50)
+        counts, optimal_value = run_qaoa(p=optimizer.config["qaoa"]["layers"], max_iter=50)
         analyze_results(counts)
         
     except Exception as e:
@@ -264,13 +243,13 @@ def run_optimization(optimizer):
             
             for i in range(2**optimizer.n_positions):
                 bitstring = format(i, f'0{optimizer.n_positions}b')
-                value = evaluate_solution(bitstring)
+                value = evaluate_solution(bitstring, score, wake_penalties, optimizer)
                 if value > best_value:
                     best_value = value
                     best_solution = bitstring
             
             print(f"Melhor solução clássica: {best_solution}")
-            print(f"Energia líquida: {best_value}")
+            print(f"Score líquido: {best_value}")
         else:
             print("Grid muito grande para busca exaustiva clássica.")
 
@@ -282,7 +261,7 @@ optimizer = QAOATurbineOptimizer(config_file)
 optimizer.display_interference_matrix()
 
 # Manter compatibilidade com código existente
-energy = optimizer.energy
+score = optimizer.score
 positions_coords = optimizer.positions_coords
 wake_penalties = optimizer.wake_penalties
 
@@ -290,9 +269,9 @@ def create_cost_hamiltonian_ANTIGO():
     """Cria o Hamiltoniano de custo usando SparsePauliOp moderno"""
     pauli_list = []
     
-    # Termos lineares (energia): -energy[i] * Z[i] 
+    # Termos lineares (score): -score[i] * Z[i] 
     for i in range(optimizer.n_positions):
-        pauli_list.append(("Z", [i], -energy[i]))  # Negativo para maximizar
+        pauli_list.append(("Z", [i], -score[i]))  # Negativo para maximizar
     
     # Termos quadráticos (penalidades): penalty * Z[i] * Z[j]
     for (i, j), penalty in wake_penalties.items():
@@ -305,9 +284,9 @@ def create_cost_hamiltonian_QUADRATICO():
     """Cria o Hamiltoniano de custo com restrições min/max turbinas - VERSÃO QUADRÁTICA ORIGINAL"""
     pauli_list = []
     
-    # Termos lineares (energia): -energy[i] * Z[i] 
+    # Termos lineares (score): -score[i] * Z[i] 
     for i in range(optimizer.n_positions):
-        pauli_list.append(("Z", [i], -energy[i]))  # Negativo para maximizar
+        pauli_list.append(("Z", [i], -score[i]))  # Negativo para maximizar
     
     # Termos quadráticos (penalidades de esteira): penalty * Z[i] * Z[j]
     for (i, j), penalty in wake_penalties.items():
@@ -347,9 +326,9 @@ def create_cost_hamiltonian_LINEAR():
     """Cria o Hamiltoniano de custo com restrições min/max turbinas - VERSÃO LINEAR OTIMIZADA"""
     pauli_list = []
     
-    # Termos lineares (energia): -energy[i] * Z[i] 
+    # Termos lineares (score): -score[i] * Z[i] 
     for i in range(optimizer.n_positions):
-        pauli_list.append(("Z", [i], -energy[i]))  # Negativo para maximizar
+        pauli_list.append(("Z", [i], -score[i]))  # Negativo para maximizar
     
     # Termos quadráticos (penalidades de esteira): penalty * Z[i] * Z[j]
     for (i, j), penalty in wake_penalties.items():
@@ -427,78 +406,18 @@ def compare_hamiltonian_implementations():
 import time
     
 # 4. FUNÇÃO AUXILIAR PARA VALIDAR RESTRIÇÕES
-def validate_constraints(solution):
-    """Valida se uma solução atende às restrições"""
-    num_turbines = sum(solution)
-    
-    violations = []
-    if optimizer.enforce_constraints:
-        if num_turbines < optimizer.min_turbines:
-            deficit = optimizer.min_turbines - num_turbines
-            violations.append(f"❌ MUITO POUCAS turbinas: {num_turbines} < {optimizer.min_turbines} (faltam {deficit})")
-        if num_turbines > optimizer.max_turbines:
-            excess = num_turbines - optimizer.max_turbines
-            violations.append(f"❌ MUITAS turbinas: {num_turbines} > {optimizer.max_turbines} (excesso de {excess})")
-        if len(violations) == 0:
-            violations.append(f"✅ Restrições ATENDIDAS: {num_turbines} turbinas está no intervalo [{optimizer.min_turbines}, {optimizer.max_turbines}]")
-    else:
-        violations.append(f"⚠️  Sem restrições ativas: {num_turbines} turbinas (qualquer número permitido)")
-    
-    return violations
 
-def create_qaoa_ansatz(cost_hamiltonian, p=1):
+def create_qaoa_ansatz(cost_hamiltonian, p):
     """Cria o ansatz QAOA usando QAOAAnsatz moderno"""
     # Usando a classe QAOAAnsatz (método recomendado)
     ansatz = QAOAAnsatz(cost_operator=cost_hamiltonian, reps=p)
     return ansatz
 
   
-def evaluate_solution(bitstring):
-    """Avalia uma solução clássica considerando restrições"""
-    x = [int(bit) for bit in bitstring]
-    
-    # Energia total
-    total_energy = sum(x[i] * energy[i] for i in range(optimizer.n_positions))
-    
-    # Penalidades de esteira
-    wake_penalty = sum(x[i] * x[j] * penalty 
-                      for (i, j), penalty in wake_penalties.items())
-    
-    # NOVO: Penalidades de restrições
-    constraint_penalty = 0
-    if optimizer.enforce_constraints:
-        num_turbines = sum(x)
-        if num_turbines < optimizer.min_turbines:
-            constraint_penalty += optimizer.constraint_penalty * (optimizer.min_turbines - num_turbines)
-        if num_turbines > optimizer.max_turbines:
-            constraint_penalty += optimizer.constraint_penalty * (num_turbines - optimizer.max_turbines)
-    
-    return total_energy - wake_penalty - constraint_penalty
 
 
-def show_active_penalties(solution):
-    """Mostra apenas as penalidades ativas para a solução atual"""
-    active_penalties = []
-    total_penalty = 0
-    
-    for (i, j), penalty in wake_penalties.items():
-        if solution[i] == 1 and solution[j] == 1:  # Ambas turbinas instaladas
-            coord1 = positions_coords[i]
-            coord2 = positions_coords[j]
-            active_penalties.append((coord1, coord2, penalty))
-            total_penalty += penalty
-    
-    if active_penalties:
-        print(f"\n🌪️  INTERFERÊNCIAS ATIVAS:")
-        for coord1, coord2, penalty in active_penalties:
-            print(f"   {coord1} → {coord2}: penalidade {penalty}")
-        print(f"   Total de penalidades: {total_penalty}")
-    else:
-        print(f"\n✅ NENHUMA INTERFERÊNCIA ATIVA (configuração otimizada!)")
-    
-    return total_penalty
 
-def run_qaoa(p=1, max_iter=50):
+def run_qaoa(p, max_iter=50):
     """Executa o algoritmo QAOA usando APIs modernas"""
     print(f"\nConfigurando QAOA com p={p} camadas...")
     
@@ -508,15 +427,35 @@ def run_qaoa(p=1, max_iter=50):
     
     print(f"Ansatz criado com {ansatz.num_qubits} qubits e {len(ansatz.parameters)} parâmetros")
     
-    # Estimator para calcular valores esperados
+    # Estimator para calcular valores esperados com shots da configuração
+    shots = optimizer.config.get("qaoa", {}).get("shots", 1024)  # Usar 1024 como fallback
     estimator = Estimator()
+    estimator.set_options(shots=shots)
+    print(f"Usando {shots} shots por iteração")
+    
+    # Contador para acompanhar iterações
+    iteration_count = [0]  # Lista para permitir modificação dentro da função aninhada
     
     def cost_function(params):
         """Função de custo para otimização clássica"""
+        iteration_count[0] += 1
+        
         # Executar com primitives
         job = estimator.run([ansatz], [cost_hamiltonian], [params])
         result = job.result()
-        return result.values[0]
+        cost_value = result.values[0]
+        
+        # Formatar parâmetros para exibição (limitando a 6 parâmetros para não poluir)
+        if len(params) <= 6:
+            params_str = ", ".join([f"{p:6.3f}" for p in params])
+        else:
+            # Mostrar apenas os primeiros 3 e últimos 3
+            params_str = ", ".join([f"{p:6.3f}" for p in params[:3]]) + " ... " + ", ".join([f"{p:6.3f}" for p in params[-3:]])
+        
+        # Imprimir progresso da otimização
+        print(f"  Iteração {iteration_count[0]:3d}: Custo = {cost_value:8.4f} | Params: [{params_str}]")
+        
+        return cost_value
     
     # Otimização clássica dos parâmetros
     print("Iniciando otimização dos parâmetros...")
@@ -539,67 +478,15 @@ def run_qaoa(p=1, max_iter=50):
     final_circuit = ansatz.assign_parameters(result.x)
     final_circuit.measure_all()
     
-    # Simular
+    # Simular com shots da configuração
     simulator = AerSimulator()
     transpiled_circuit = transpile(final_circuit, simulator)
-    job = simulator.run(transpiled_circuit, shots=1024)
+    job = simulator.run(transpiled_circuit, shots=shots)
     counts = job.result().get_counts()
     
     return counts, result.fun
 
-def bitstring_to_grid(bitstring):
-    """Converte bitstring para representação de grid 2x3"""
-    # Qiskit inverte a ordem dos bits
-    solution = [int(bit) for bit in reversed(bitstring)]
-    return solution
 
-def display_grid(solution, title=None):
-    """Exibe o grid de forma visual dinamicamente"""
-    if title is None:
-        title = f"Grid {optimizer.rows}x{optimizer.cols}"
-        
-    print(f"\n{title}:")
-    
-    # Cabeçalho das colunas
-    header = "    " + "".join(f"Col {c:2d} " for c in range(optimizer.cols))
-    print(header)
-    
-    # Linha superior da tabela
-    line_top = "   ┌" + "─────┬" * (optimizer.cols - 1) + "─────┐"
-    print(line_top)
-    
-    # Linhas do grid
-    for row in range(optimizer.rows):
-        # Valores da linha
-        values = []
-        for col in range(optimizer.cols):
-            i = row * optimizer.cols + col
-            values.append(f"  {solution[i]}  ")
-        
-        row_line = f"L{row} │" + "│".join(values) + "│"
-        print(row_line)
-        
-        # Linha separadora (exceto na última linha)
-        if row < optimizer.rows - 1:
-            line_mid = "   ├" + "─────┼" * (optimizer.cols - 1) + "─────┤"
-            print(line_mid)
-    
-    # Linha inferior da tabela
-    line_bottom = "   └" + "─────┴" * (optimizer.cols - 1) + "─────┘"
-    print(line_bottom)
-    
-    # Mostrar coordenadas das turbinas instaladas
-    installed = []
-    for i in range(optimizer.n_positions):
-        if solution[i] == 1:
-            row = i // optimizer.cols
-            col = i % optimizer.cols
-            installed.append(f"({row},{col})")
-    
-    if installed:
-        print(f"Turbinas em: {', '.join(installed)}")
-    else:
-        print("Nenhuma turbina instalada")
 
 def analyze_results_ANTIGO(counts):
     """Analisa os resultados do QAOA"""
@@ -617,28 +504,28 @@ def analyze_results_ANTIGO(counts):
     
     # Converter para formato de grid
     solution = bitstring_to_grid(best_bitstring)
-    display_grid(solution, "MELHOR CONFIGURAÇÃO")
+    display_grid(solution, optimizer, "MELHOR CONFIGURAÇÃO")
     
     # Mostrar penalidades efetivas
-    total_penalty = show_active_penalties(solution)
+    total_penalty = show_active_penalties(solution, wake_penalties, positions_coords)
     
     # Métricas
     installed_positions = [i for i in range(optimizer.n_positions) if solution[i] == 1]
-    total_energy = sum(solution[i] * energy[i] for i in range(optimizer.n_positions))
+    total_score = sum(solution[i] * score[i] for i in range(optimizer.n_positions))
     
     print(f"\n📊 MÉTRICAS:")
     print(f"   • Número de turbinas: {len(installed_positions)}")
-    print(f"   • Produção total: {total_energy}")
+    print(f"   • Score total: {total_score}")
     print(f"   • Penalidades: {total_penalty}")
-    print(f"   • Energia líquida: {total_energy - total_penalty}")
+    print(f"   • Score líquido: {total_score - total_penalty}")
     
     # Mostrar produção por posição
     print(f"\n⚡ PRODUÇÃO POR POSIÇÃO:")
     for i in range(optimizer.n_positions):
         row, col = i // optimizer.cols, i % optimizer.cols
         status = "🟢 ATIVA" if solution[i] == 1 else "⚪ VAZIA"
-        prod = energy[i] if solution[i] == 1 else 0
-        print(f"   ({row},{col}) - {status} - Energia: {prod:.1f}")
+        sc = score[i] if solution[i] == 1 else 0
+        print(f"   ({row},{col}) - {status} - Score: {sc:.1f}")
     
     # Top 5 soluções com visualização
     print(f"\n🏆 TOP 5 SOLUÇÕES MAIS PROVÁVEIS:")
@@ -656,11 +543,11 @@ def analyze_results_ANTIGO(counts):
             active_pos = [str(i) for i in range(optimizer.n_positions) if sol[i] == 1]
             grid_compact = f"[{','.join(active_pos) if active_pos else 'vazio'}]"
         
-        print(f"   {i+1}. {grid_compact} - {prob:.3f} - Energia: {value}")
+        print(f"   {i+1}. {grid_compact} - {prob:.3f} - Score: {value}")
         
         # Mostrar grid completo apenas para as 3 melhores
         if i < 3:
-            display_grid(sol, f"Solução #{i+1}")
+            display_grid(sol, optimizer, f"Solução #{i+1}")
             
 
 # 6. MODIFICAÇÃO NA FUNÇÃO analyze_results
@@ -680,20 +567,20 @@ def analyze_results(counts):
     
     # Converter para formato de grid
     solution = bitstring_to_grid(best_bitstring)
-    display_grid(solution, "MELHOR CONFIGURAÇÃO")
+    display_grid(solution, optimizer, "MELHOR CONFIGURAÇÃO")
     
     # NOVO: Validar restrições de forma destacada
-    violations = validate_constraints(solution)
+    violations = validate_constraints(solution, optimizer)
     print(f"\n🎯 VERIFICAÇÃO DE RESTRIÇÕES:")
     for violation in violations:
         print(f"   {violation}")
     
     # Mostrar penalidades efetivas
-    total_penalty = show_active_penalties(solution)
+    total_penalty = show_active_penalties(solution, wake_penalties, positions_coords)
     
     # Métricas detalhadas
     installed_positions = [i for i in range(optimizer.n_positions) if solution[i] == 1]
-    total_energy = sum(solution[i] * energy[i] for i in range(optimizer.n_positions))
+    total_score = sum(solution[i] * score[i] for i in range(optimizer.n_positions))
     num_turbines = len(installed_positions)
     
     print(f"\n📊 MÉTRICAS DETALHADAS:")
@@ -716,14 +603,14 @@ def analyze_results(counts):
     else:
         print(f"   • Sem restrições de número")
     
-    print(f"   • Produção total: {total_energy:.2f}")
+    print(f"   • Score total: {total_score:.2f}")
     print(f"   • Penalidades de esteira: {total_penalty:.2f}")
-    net_energy = total_energy - total_penalty
+    net_score = total_score - total_penalty
     if optimizer.enforce_constraints and constraint_penalty > 0:
-        net_energy -= constraint_penalty
-        print(f"   • Energia líquida final: {net_energy:.2f} (descontando restrições)")
+        net_score -= constraint_penalty
+        print(f"   • Score líquido final: {net_score:.2f} (descontando restrições)")
     else:
-        print(f"   • Energia líquida: {net_energy:.2f}")
+        print(f"   • Score líquido: {net_score:.2f}")
     
     # Mostrar produção por posição
     print(f"\n⚡ PRODUÇÃO POR POSIÇÃO:")
@@ -731,8 +618,8 @@ def analyze_results(counts):
         row = i // optimizer.cols
         col = i % optimizer.cols
         status = "🌪️" if solution[i] == 1 else "⬜"
-        prod = energy[i] if solution[i] == 1 else 0
-        print(f"   Pos ({row},{col}): {status} Produção: {prod:.1f}")
+        sc = score[i] if solution[i] == 1 else 0
+        print(f"   Pos ({row},{col}): {status} Score: {sc:.1f}")
         
     # Resumo final com destaque para restrições
     print(f"\n" + "="*50)
@@ -748,7 +635,7 @@ def analyze_results(counts):
             print(f"   {num_turbines} turbinas dentro do intervalo [{optimizer.min_turbines}, {optimizer.max_turbines}]")
     else:
         print(f"ℹ️  Execução sem restrições de número de turbinas")
-    print(f"🏆 Energia líquida final: {net_energy:.2f}")
+    print(f"🏆 Score líquido final: {net_score:.2f}")
 
 
 # Executar a otimização apenas se executado diretamente
@@ -763,7 +650,7 @@ if __name__ == "__main__":
     
     # Inicializar com configuração especificada
     optimizer = QAOATurbineOptimizer(args.config)
-    energy = optimizer.energy
+    score = optimizer.score
     wake_penalties = optimizer.wake_penalties
     
     # Se solicitado benchmark, executar e sair
@@ -802,12 +689,12 @@ if __name__ == "__main__":
             
             for i in range(2**optimizer.n_positions):
                 bitstring = format(i, f'0{optimizer.n_positions}b')
-                value = evaluate_solution(bitstring)
+                value = evaluate_solution(bitstring, score, wake_penalties, optimizer)
                 if value > best_value:
                     best_value = value
                     best_solution = bitstring
             
             print(f"Melhor solução clássica: {best_solution}")
-            print(f"Energia líquida: {best_value}")
+            print(f"Score líquido: {best_value}")
         else:
             print("Grid muito grande para busca exaustiva clássica.")

@@ -13,10 +13,10 @@
     "decay_factor": 0.5,
     "description": "Decaimento mais suave"
   },
-  "energy_production": {
+  "score": {
     "mode": "uniform",
     "uniform_value": 4.5,
-    "description": "Todas as posições com mesma energia"
+    "description": "Todas as posições com mesmo score"
   },
   "qaoa": {
     "layers": 1,

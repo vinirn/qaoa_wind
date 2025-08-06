@@ -19,21 +19,21 @@
     "description": "Score constante para todas as posições"
   },
   "qaoa": {
-    "layers": 3,
+    "layers": 2,
     "optimizer": "COBYLA",
     "optimizer_options": {
       "maxiter": 100,
       "rhobeg": 0.5
     },
     "shots": 1024,
-    "description": "Balanceado: precisão vs velocidade para QAOA"
+    "description": ""
   },
   "constraints": {
     "min_turbines": 4,
     "max_turbines": 6,
     "enforce_constraints": true,
-    "constraint_penalty": 10.0,
-    "description": "Exatamente 3 turbinas (restrição ATIVA)"
+    "constraint_penalty": 20.0,
+    "description": ""
   },
   "display": {
     "show_interference_matrix": false,

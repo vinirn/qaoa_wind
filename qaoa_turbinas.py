@@ -286,127 +286,61 @@ def create_cost_hamiltonian_ANTIGO():
     # Usando from_sparse_list (método moderno recomendado)
     return SparsePauliOp.from_sparse_list(pauli_list, num_qubits=optimizer.n_positions)
     
-def create_cost_hamiltonian_QUADRATICO():
-    """Cria o Hamiltoniano de custo com restrições min/max turbinas - VERSÃO QUADRÁTICA ORIGINAL"""
-    pauli_list = []
-    
-    # Termos lineares (score): -score[i] * Z[i] 
-    for i in range(optimizer.n_positions):
-        pauli_list.append(("Z", [i], -score[i]))  # Negativo para maximizar
-    
-    # Termos quadráticos (penalidades de esteira): penalty * Z[i] * Z[j]
-    for (i, j), penalty in wake_penalties.items():
-        pauli_list.append(("ZZ", [i, j], -penalty))  # CORREÇÃO: Negativo para penalizar no Hamiltoniano
-    
-    # NOVO: Restrições de número de turbinas
-    if optimizer.enforce_constraints:
-        # Para implementar restrições min/max, usamos penalidades quadráticas
-        # que aproximam a função de contagem
-        
-        # Termo para penalizar muito poucas turbinas (< min_turbines)
-        if optimizer.min_turbines > 0:
-            # Adiciona penalidade crescente quando número de turbinas é baixo
-            for i in range(optimizer.n_positions):
-                for j in range(i+1, optimizer.n_positions):
-                    # Penaliza quando AMBAS estão desligadas se estivermos abaixo do mínimo
-                    # Implementação simplificada: penaliza ausência de pares
-                    min_penalty = optimizer.constraint_penalty * (optimizer.min_turbines / optimizer.n_positions)
-                    pauli_list.append(("II", [], min_penalty))  # Termo constante
-                    pauli_list.append(("Z", [i], -min_penalty/2))
-                    pauli_list.append(("Z", [j], -min_penalty/2))
-                    pauli_list.append(("ZZ", [i, j], min_penalty/4))
-        
-        # Termo para penalizar muitas turbinas (> max_turbines)
-        if optimizer.max_turbines < optimizer.n_positions:
-            # Penaliza quando muitas turbinas estão ligadas
-            max_penalty = optimizer.constraint_penalty
-            for i in range(optimizer.n_positions):
-                for j in range(i+1, optimizer.n_positions):
-                    # Penaliza quando AMBAS estão ligadas se excedermos o máximo
-                    excess_factor = max(0, (optimizer.n_positions - optimizer.max_turbines) / optimizer.n_positions)
-                    pauli_list.append(("ZZ", [i, j], max_penalty * excess_factor))
-    
-    return SparsePauliOp.from_sparse_list(pauli_list, num_qubits=optimizer.n_positions)
-
-def create_cost_hamiltonian_LINEAR():
-    """Cria o Hamiltoniano de custo com restrições min/max turbinas - VERSÃO LINEAR OTIMIZADA"""
-    pauli_list = []
-    
-    # Termos lineares (score): -score[i] * Z[i] 
-    for i in range(optimizer.n_positions):
-        pauli_list.append(("Z", [i], -score[i]))  # Negativo para maximizar
-    
-    # Termos quadráticos (penalidades de esteira): penalty * Z[i] * Z[j]
-    for (i, j), penalty in wake_penalties.items():
-        pauli_list.append(("ZZ", [i, j], -penalty))  # CORREÇÃO: Negativo para penalizar no Hamiltoniano
-    
-    # OTIMIZAÇÃO: Restrições com complexidade linear O(n) para construção
-    if optimizer.enforce_constraints:
-        # Implementação corrigida com penalizações mais fortes
-        n = optimizer.n_positions
-        penalty = optimizer.constraint_penalty
-        
-        # Estratégia híbrida: penalidades lineares E quadráticas mais eficazes
-        if optimizer.min_turbines > 0 or optimizer.max_turbines < n:
-            target_mid = (optimizer.min_turbines + optimizer.max_turbines) / 2.0
-            
-            # CORREÇÃO: Penalidades muito mais fortes para garantir cumprimento
-            strong_penalty = penalty * 10  # Aumentar significativamente
-            
-            # Termo linear forte baseado no target
-            # Se target_mid > n/2, incentivar turbinas ligadas (coef. negativo para Z)
-            # Se target_mid < n/2, desincentivar turbinas ligadas (coef. positivo para Z)
-            linear_coeff = strong_penalty * (1 - 2 * target_mid / n)
-            
-            for i in range(n):
-                pauli_list.append(("Z", [i], linear_coeff))
-            
-            # Penalidade quadrática para reforçar a restrição
-            # Implementa aproximadamente penalty * (sum(z_i) - target)²
-            quad_penalty = strong_penalty / n
-            
-            # Termos ZZ que implementam (sum z_i)² de forma distribuída
-            for i in range(n):
-                for j in range(i+1, n):
-                    # Coeficiente ajustado baseado no target
-                    if target_mid > n / 2:
-                        # Target alto: penalizar pouco as interações (permitir mais turbinas)
-                        pauli_list.append(("ZZ", [i, j], -quad_penalty * 0.5))
-                    else:
-                        # Target baixo: penalizar muito as interações (forçar poucas turbinas)
-                        pauli_list.append(("ZZ", [i, j], quad_penalty * 2.0))
-    
-    return SparsePauliOp.from_sparse_list(pauli_list, num_qubits=optimizer.n_positions)
-
 def create_cost_hamiltonian():
-    """FUNÇÃO PRINCIPAL - pode alternar entre implementações"""
-    # Para debug: use a implementação quadrática que sabemos que funciona
-    return create_cost_hamiltonian_QUADRATICO()
-    # Para produção: quando linear estiver validada, usar:
-    # return create_cost_hamiltonian_LINEAR()
+    """Cria o Hamiltoniano de custo - apenas score e wake penalties"""
+    pauli_list = []
+    
+    # Termos lineares (score): -score[i] * Z[i] 
+    for i in range(optimizer.n_positions):
+        pauli_list.append(("Z", [i], -score[i]))  # Negativo para maximizar
+    
+    # Termos quadráticos (penalidades de esteira): wake_penalty * Z[i] * Z[j]
+    for (i, j), wake_penalty in wake_penalties.items():
+        pauli_list.append(("ZZ", [i, j], wake_penalty))  # Positivo para penalizar
+    
+    return SparsePauliOp.from_sparse_list(pauli_list, num_qubits=optimizer.n_positions)
 
-def compare_hamiltonian_implementations():
-    """Compara as duas implementações do Hamiltoniano para validação"""
-    print("\n🔬 Comparando implementações do Hamiltoniano...")
+
+def objective_function_with_constraints(params, estimator, ansatz, cost_hamiltonian, simple_sampler):
+    """Função objetivo que inclui penalty dinâmica para restrições min/max turbinas"""
     
-    # Implementação quadrática (original)
-    start_time = time.time()
-    ham_quad = create_cost_hamiltonian_QUADRATICO()
-    time_quad = time.time() - start_time
+    # 1. Calcula energia do Hamiltoniano (QAOA normal)
+    job = estimator.run([ansatz], [cost_hamiltonian], [params])
+    qaoa_energy = job.result().values[0]
     
-    # Implementação linear (otimizada)  
-    start_time = time.time()
-    ham_linear = create_cost_hamiltonian()
-    time_linear = time.time() - start_time
+    # 2. Se restrições não estão ativas, retorna energia normal
+    if not optimizer.enforce_constraints:
+        return qaoa_energy
     
-    print(f"⏱️  Tempo construção quadrática: {time_quad:.4f}s")
-    print(f"⏱️  Tempo construção linear: {time_linear:.4f}s")
-    print(f"🚀 Speedup: {time_quad/time_linear:.2f}x")
+    # 3. Extrai distribuição completa para calcular penalty esperada
+    quasi_dist = simple_sampler(ansatz, params)
+       
+    # 4. Calcula penalty esperada sobre TODA a distribuição (mais estável)
+    expected_penalty = 0
     
-    print(f"📊 Termos no Hamiltoniano quadrático: {len(ham_quad.paulis)}")
-    print(f"📊 Termos no Hamiltoniano linear: {len(ham_linear.paulis)}")
+    for config, probability in quasi_dist.items():
+        # Conta turbinas nesta configuração
+        num_turbines = bin(config).count('1')        
+        # Calcula penalty para esta configuração
+        config_penalty = 0
+        if num_turbines < optimizer.min_turbines:
+            violation = optimizer.min_turbines - num_turbines
+            config_penalty = optimizer.constraint_penalty * violation**2
+        elif num_turbines > optimizer.max_turbines:
+            violation = num_turbines - optimizer.max_turbines
+            config_penalty = optimizer.constraint_penalty * violation**2
+        
+        # Adiciona penalty ponderada pela probabilidade
+        expected_penalty += probability * config_penalty
+        
+    #print(qaoa_energy)
+    #print(expected_penalty)
     
-    return ham_quad, ham_linear
+    # 5. Retorna energia + penalty esperada (minimização)
+    return qaoa_energy + expected_penalty
+
+
+
 
 # Importar time para benchmarking
 import time
@@ -443,13 +377,31 @@ def run_qaoa(p, max_iter=50):
     iteration_count = [0]  # Lista para permitir modificação dentro da função aninhada
     
     def cost_function(params):
-        """Função de custo para otimização clássica"""
+        """Função de custo com penalty dinâmica para restrições"""
         iteration_count[0] += 1
         
-        # Executar com primitives
-        job = estimator.run([ansatz], [cost_hamiltonian], [params])
-        result = job.result()
-        cost_value = result.values[0]
+        # Usar nossa nova função com penalidades dinâmicas
+        # Criar sampler simples baseado no simulador existente
+        from qiskit_aer import AerSimulator
+        from qiskit import transpile
+        
+        def simple_sampler(ansatz, params):
+            # Criar circuito com parâmetros
+            circuit = ansatz.assign_parameters(params)
+            circuit.measure_all()
+            
+            # Simular
+            simulator = AerSimulator()
+            transpiled = transpile(circuit, simulator)
+            job = simulator.run(transpiled, shots=shots)
+            counts = job.result().get_counts()
+            
+            # Converter para quasi_dist format
+            total_shots = sum(counts.values())
+            quasi_dist = {int(bitstring, 2): count/total_shots for bitstring, count in counts.items()}
+            return quasi_dist
+        
+        cost_value = objective_function_with_constraints(params, estimator, ansatz, cost_hamiltonian, simple_sampler)
         
         # Formatar parâmetros para exibição (limitando a 6 parâmetros para não poluir)
         if len(params) <= 6:

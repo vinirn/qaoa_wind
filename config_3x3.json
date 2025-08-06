@@ -19,7 +19,7 @@
     "description": "Score constante para todas as posições"
   },
   "qaoa": {
-    "layers": 3,
+    "layers": 2,
     "optimizer": "COBYLA",
     "optimizer_options": {
       "maxiter": 100,

@@ -8,10 +8,10 @@
     "direction": [0, 1],
     "description": "Direção do vento: oeste→leste"
   },
-  "penalties": {
-    "max_penalty": 4,
-    "decay_factor": 1,
-    "description": "Penalidade maior para grid maior"
+  "wake_effects": {
+    "base_penalty": 4.0,
+    "distance_decay": 1.0,
+    "description": "Penalidade de esteira: base_penalty - (distância × distance_decay)"
   },
   "score": {
     "mode": "uniform",

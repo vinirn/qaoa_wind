@@ -8,10 +8,10 @@
     "direction": [0, 1],
     "description": "Direção do vento: oeste→leste"
   },
-  "penalties": {
-    "max_penalty": 4,
-    "decay_factor": 1,
-    "description": "Penalidade maior para grid maior"
+  "wake_effects": {
+    "base_penalty": 4.0,
+    "distance_decay": 1.0,
+    "description": "Penalidade de esteira: base_penalty - (distância × distance_decay)"
   },
   "score": {
     "mode": "uniform",
@@ -19,20 +19,20 @@
     "description": "Score constante para todas as posições"
   },
   "qaoa": {
-    "layers": 2,
+    "layers": 4,
     "optimizer": "COBYLA",
     "optimizer_options": {
       "maxiter": 100,
-      "rhobeg": 0.5
+      "rhobeg": 0.7
     },
     "shots": 1024,
     "description": ""
   },
   "constraints": {
-    "min_turbines": 4,
+    "min_turbines": 5,
     "max_turbines": 6,
     "enforce_constraints": true,
-    "constraint_penalty": 20.0,
+    "constraint_penalty": 25.0,
     "description": ""
   },
   "display": {

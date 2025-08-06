@@ -27,8 +27,14 @@ class QAOATurbineOptimizer:
         self.cols = self.config["grid"]["cols"]
         self.n_positions = self.rows * self.cols
         self.wind_direction = tuple(self.config["wind"]["direction"])
-        self.max_penalty = self.config["penalties"]["max_penalty"]
-        self.decay_factor = self.config["penalties"]["decay_factor"]
+        # Suporte para nomenclatura antiga e nova
+        if "wake_effects" in self.config:
+            self.max_penalty = self.config["wake_effects"]["base_penalty"]
+            self.decay_factor = self.config["wake_effects"]["distance_decay"]
+        else:
+            # Compatibilidade com configs antigos
+            self.max_penalty = self.config["penalties"]["max_penalty"]
+            self.decay_factor = self.config["penalties"]["decay_factor"]
         
         # NOVO: Restrições de turbinas
         constraints = self.config.get("constraints", {})
@@ -48,7 +54,7 @@ class QAOATurbineOptimizer:
         print("=== QAOA Configurável para Turbinas Eólicas ===\n")
         print(f"📐 Grid: {self.rows}x{self.cols} ({self.n_positions} posições)")
         print(f"🌬️  Vento: {self.wind_direction}")
-        print(f"⚡ Penalidade máxima: {self.max_penalty}")
+        print(f"⚡ Penalidade base para esteira: {self.max_penalty}")
         
         # NOVO: Mostrar restrições de forma destacada
         print(f"\n🎯 RESTRIÇÕES DE NÚMERO DE TURBINAS:")

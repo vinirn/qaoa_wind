@@ -8,10 +8,10 @@
     "direction": [0, 1],
     "description": "Direção do vento: [0,1] = oeste→leste, [1,0] = norte→sul"
   },
-  "penalties": {
-    "max_penalty": 3,
-    "decay_factor": 1,
-    "description": "Penalidade máxima e fator de decaimento com distância"
+  "wake_effects": {
+    "base_penalty": 3.0,
+    "distance_decay": 1.0,
+    "description": "Penalidade de esteira: base_penalty - (distância × distance_decay)"
   },
   "score": {
     "mode": "random",

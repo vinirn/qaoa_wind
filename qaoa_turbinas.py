@@ -229,7 +229,9 @@ def run_optimization(optimizer):
 
     # Executar QAOA
     try:
-        counts, optimal_value = run_qaoa(p=optimizer.config["qaoa"]["layers"], max_iter=50)
+        # Obter maxiter das opções do otimizador ou usar padrão
+        max_iter = optimizer.config["qaoa"].get("optimizer_options", {}).get("maxiter", 50)
+        counts, optimal_value = run_qaoa(p=optimizer.config["qaoa"]["layers"], max_iter=max_iter)
         analyze_results(counts)
         
     except Exception as e:
@@ -257,8 +259,12 @@ def run_optimization(optimizer):
 config_file = get_config_file()
 optimizer = QAOATurbineOptimizer(config_file)
 
-# Exibir matriz de interferências no início
-optimizer.display_interference_matrix()
+# Exibir matriz de interferências se configurado
+if optimizer.config.get("display", {}).get("show_interference_matrix", True):
+    optimizer.display_interference_matrix()
+else:
+    print("📊 Matriz de interferências: OCULTA (configurado no JSON)")
+    print(f"Total de {len(optimizer.wake_penalties)} possíveis interferências no grid {optimizer.rows}x{optimizer.cols}")
 
 # Manter compatibilidade com código existente
 score = optimizer.score
@@ -458,14 +464,36 @@ def run_qaoa(p, max_iter=50):
         return cost_value
     
     # Otimização clássica dos parâmetros
-    print("Iniciando otimização dos parâmetros...")
+    optimizer_method = optimizer.config["qaoa"]["optimizer"]
+    print(f"Iniciando otimização dos parâmetros usando {optimizer_method}...")
     
-    # Chute inicial: valores pequenos aleatórios
-    initial_params = np.random.uniform(0, 0.1, len(ansatz.parameters))
+    # Chute inicial: valores maiores para melhor gradiente
+    initial_params = np.random.uniform(0, np.pi/4, len(ansatz.parameters))
+    print(f"Parâmetros iniciais: {[f'{p:.3f}' for p in initial_params]}")
     
-    # Otimizar usando COBYLA (robusto para otimização ruidosa)
-    result = minimize(cost_function, initial_params, method='COBYLA', 
-                     options={'maxiter': max_iter})
+    # Otimizar usando algoritmo configurado
+    optimizer_method = optimizer.config["qaoa"]["optimizer"]
+    
+    # Carregar opções específicas do otimizador do config
+    base_options = {}
+    if "optimizer_options" in optimizer.config["qaoa"]:
+        base_options = optimizer.config["qaoa"]["optimizer_options"].copy()
+        print(f"Usando opções personalizadas: {base_options}")
+    
+    # Aplicar opções padrão se não especificadas
+    if optimizer_method in ['L-BFGS-B', 'BFGS']:
+        # Para algoritmos baseados em gradiente, usar maxfun como padrão
+        if 'maxfun' not in base_options and 'maxiter' not in base_options:
+            base_options['maxfun'] = max_iter
+    else:
+        # Para outros algoritmos, usar maxiter como padrão  
+        if 'maxiter' not in base_options:
+            base_options['maxiter'] = max_iter
+    
+    print(f"Opções finais do otimizador: {base_options}")
+    
+    result = minimize(cost_function, initial_params, method=optimizer_method, 
+                     options=base_options)
     
     print(f"Otimização concluída em {result.nfev} avaliações")
     print(f"Valor ótimo encontrado: {result.fun}")
@@ -671,8 +699,8 @@ if __name__ == "__main__":
     try:
         # Usar parâmetros QAOA da configuração
         p_layers = optimizer.config["qaoa"]["layers"]
-        max_iterations = optimizer.config["qaoa"]["max_iterations"]
-        print(f"\n🔧 QAOA: {p_layers} camadas, {max_iterations} iterações")
+        max_iterations = optimizer.config["qaoa"].get("optimizer_options", {}).get("maxiter", 50)
+        print(f"\n🔧 QAOA: {p_layers} camadas, {max_iterations} iterações do otimizador")
         
         # Executar QAOA
         counts, optimal_value = run_qaoa(p=p_layers, max_iter=max_iterations)

@@ -21,10 +21,13 @@
   },
   "qaoa": {
     "layers": 1,
-    "max_iterations": 50,
     "optimizer": "COBYLA",
+    "optimizer_options": {
+      "maxiter": 50,
+      "rhobeg": 0.5
+    },
     "shots": 1024,
-    "description": "Parâmetros do algoritmo QAOA"
+    "description": "COBYLA com parâmetros otimizados para QAOA"
   },
   "constraints": {
     "max_turbines": null,
@@ -32,5 +35,9 @@
     "enforce_constraints": false,
     "constraint_penalty": 10.0,
     "description": "Restrições de quantidade. null = sem restrição"
+  },
+  "display": {
+    "show_interference_matrix": true,
+    "description": "Controla a exibição da matriz completa de interferências"
   }
 }

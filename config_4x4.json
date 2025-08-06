@@ -1,8 +1,8 @@
 {
   "grid": {
-    "rows": 5,
-    "cols": 5,
-    "description": "Grid 5x5"
+    "rows": 4,
+    "cols": 4,
+    "description": "Grid 4x4"
   },
   "wind": {
     "direction": [0, 1],
@@ -19,18 +19,18 @@
     "description": "Score constante para todas as posições"
   },
   "qaoa": {
-    "layers": 2,
+    "layers": 3,
     "optimizer": "COBYLA",
     "optimizer_options": {
       "maxiter": 100,
       "rhobeg": 0.5
     },
-    "shots": 16,
+    "shots": 1024,
     "description": "Balanceado: precisão vs velocidade para QAOA"
   },
   "constraints": {
-    "max_turbines": 3,
-    "min_turbines": 3,
+    "min_turbines": 4,
+    "max_turbines": 6,
     "enforce_constraints": true,
     "constraint_penalty": 10.0,
     "description": "Exatamente 3 turbinas (restrição ATIVA)"

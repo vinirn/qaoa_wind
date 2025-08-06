@@ -15,20 +15,28 @@
   },
   "score": {
     "mode": "uniform",
-    "uniform_value": 4.5,
+    "uniform_value": 5,
     "description": "Score constante para todas as posições"
   },
   "qaoa": {
-    "layers": 2,
-    "max_iterations": 100,
+    "layers": 3,
     "optimizer": "COBYLA",
-    "shots": 16
+    "optimizer_options": {
+      "maxiter": 100,
+      "rhobeg": 0.7
+    },
+    "shots": 1024,
+    "description": "Balanceado: precisão vs velocidade para QAOA"
   },
   "constraints": {
-    "max_turbines": 3,
-    "min_turbines": 3,
+    "min_turbines": 2,
+    "max_turbines": 4,
     "enforce_constraints": true,
-    "constraint_penalty": 20.0,
+    "constraint_penalty": 10.0,
     "description": "Exatamente 3 turbinas (restrição ATIVA)"
+  },
+  "display": {
+    "show_interference_matrix": false,
+    "description": "Controla a exibição da matriz completa de interferências"
   }
 }

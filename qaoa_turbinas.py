@@ -339,9 +339,6 @@ def objective_function_with_constraints(params, estimator, ansatz, cost_hamilton
     # 5. Retorna energia + penalty esperada (minimização)
     return qaoa_energy + expected_penalty
 
-
-
-
 # Importar time para benchmarking
 import time
     

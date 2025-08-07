@@ -164,6 +164,76 @@ def bitstring_to_grid(bitstring):
     solution = [int(bit) for bit in reversed(bitstring)]
     return solution
 
+def display_interference_matrix(optimizer):
+    """Exibe TODAS as combinações de turbinas, incluindo penalidades zero"""
+    print(f"\n🌪️  MATRIZ COMPLETA DE INTERFERÊNCIAS (INCLUINDO ZEROS)")
+    wind_desc = "Oeste → Leste" if optimizer.wind_direction == (0, 1) else "Norte → Sul"
+    print(f"Direção do vento: {wind_desc}")
+    print(f"Grid {optimizer.rows}x{optimizer.cols} - Analisando todas as {optimizer.n_positions * (optimizer.n_positions - 1)} combinações")
+    print("="*70)
+    
+    # Calcular TODAS as combinações, não só as com penalidade > 0
+    total_combinations = 0
+    active_interferences = 0
+    
+    for i in range(optimizer.n_positions):
+        source_coord = optimizer.positions_coords[i]
+        print(f"\n📍 Turbina em {source_coord}:")
+        
+        targets_in_line = []
+        targets_other = []
+        
+        for j in range(optimizer.n_positions):
+            if i != j:
+                target_coord = optimizer.positions_coords[j]
+                penalty = optimizer.wake_penalties.get((i, j), 0.0)  # 0 se não existe
+                
+                # Calcular direção e distância
+                if optimizer.wind_direction == (0, 1):  # oeste→leste
+                    dx = target_coord[1] - source_coord[1]
+                    dy = target_coord[0] - source_coord[0]
+                    same_line = (dy == 0)
+                    in_wind_direction = (dx > 0)
+                else:  # norte→sul
+                    dx = target_coord[0] - source_coord[0]
+                    dy = target_coord[1] - source_coord[1]
+                    same_line = (dy == 0)
+                    in_wind_direction = (dx > 0)
+                
+                # Classificar as posições
+                status = ""
+                if penalty > 0:
+                    status = f"💨 INTERFERE"
+                    active_interferences += 1
+                elif in_wind_direction and same_line:
+                    status = f"🔸 MESMA LINHA"
+                elif in_wind_direction:
+                    status = f"➡️  VENTO"
+                else:
+                    status = f"⚪ SEM EFEITO"
+                
+                info = f"   {target_coord}: {penalty:.2f} - {status}"
+                
+                if same_line and in_wind_direction:
+                    targets_in_line.append(info)
+                else:
+                    targets_other.append(info)
+                
+                total_combinations += 1
+        
+        # Mostrar primeiro as da mesma linha, depois outras
+        for info in targets_in_line:
+            print(info)
+        for info in targets_other:
+            print(info)
+    
+    print(f"\n📊 RESUMO FINAL:")
+    print(f"   • Total de combinações analisadas: {total_combinations}")
+    print(f"   • Interferências ativas (penalty > 0): {active_interferences}")
+    print(f"   • Sem interferência (penalty = 0): {total_combinations - active_interferences}")
+    print(f"   • Taxa de interferência: {active_interferences/total_combinations*100:.1f}%")
+    print("="*70)
+
 def display_grid(solution, optimizer, title=None):
     """Exibe o grid de forma visual dinamicamente"""
     if title is None:

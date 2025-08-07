@@ -11,10 +11,11 @@ import os
 import sys
 from utils import (parse_arguments, list_available_configs, load_config, get_config_file,
                    validate_constraints, evaluate_solution, show_active_penalties, 
-                   bitstring_to_grid, display_grid)
+                   bitstring_to_grid, display_grid, display_interference_matrix)
 from qiskit.quantum_info import SparsePauliOp
-from qiskit.circuit.library import QAOAAnsatz
-from qiskit_aer.primitives import Estimator
+from qiskit import QuantumCircuit
+from qiskit.circuit import Parameter
+from qiskit_aer.primitives import EstimatorV2
 from scipy.optimize import minimize
 
 class QAOATurbineOptimizer:
@@ -104,75 +105,6 @@ class QAOATurbineOptimizer:
             
         print(f"💯 Score por posição: {[f'{s:.1f}' for s in self.score]}")
         
-    def display_interference_matrix(self):
-        """Exibe TODAS as combinações de turbinas, incluindo penalidades zero"""
-        print(f"\n🌪️  MATRIZ COMPLETA DE INTERFERÊNCIAS (INCLUINDO ZEROS)")
-        wind_desc = "Oeste → Leste" if self.wind_direction == (0, 1) else "Norte → Sul"
-        print(f"Direção do vento: {wind_desc}")
-        print(f"Grid {self.rows}x{self.cols} - Analisando todas as {self.n_positions * (self.n_positions - 1)} combinações")
-        print("="*70)
-        
-        # Calcular TODAS as combinações, não só as com penalidade > 0
-        total_combinations = 0
-        active_interferences = 0
-        
-        for i in range(self.n_positions):
-            source_coord = self.positions_coords[i]
-            print(f"\n📍 Turbina em {source_coord}:")
-            
-            targets_in_line = []
-            targets_other = []
-            
-            for j in range(self.n_positions):
-                if i != j:
-                    target_coord = self.positions_coords[j]
-                    penalty = self.wake_penalties.get((i, j), 0.0)  # 0 se não existe
-                    
-                    # Calcular direção e distância
-                    if self.wind_direction == (0, 1):  # oeste→leste
-                        dx = target_coord[1] - source_coord[1]
-                        dy = target_coord[0] - source_coord[0]
-                        same_line = (dy == 0)
-                        in_wind_direction = (dx > 0)
-                    else:  # norte→sul
-                        dx = target_coord[0] - source_coord[0]
-                        dy = target_coord[1] - source_coord[1]
-                        same_line = (dy == 0)
-                        in_wind_direction = (dx > 0)
-                    
-                    # Classificar as posições
-                    status = ""
-                    if penalty > 0:
-                        status = f"💨 INTERFERE"
-                        active_interferences += 1
-                    elif in_wind_direction and same_line:
-                        status = f"🔸 MESMA LINHA"
-                    elif in_wind_direction:
-                        status = f"➡️  VENTO"
-                    else:
-                        status = f"⚪ SEM EFEITO"
-                    
-                    info = f"   {target_coord}: {penalty:.2f} - {status}"
-                    
-                    if same_line and in_wind_direction:
-                        targets_in_line.append(info)
-                    else:
-                        targets_other.append(info)
-                    
-                    total_combinations += 1
-            
-            # Mostrar primeiro as da mesma linha, depois outras
-            for info in targets_in_line:
-                print(info)
-            for info in targets_other:
-                print(info)
-        
-        print(f"\n📊 RESUMO FINAL:")
-        print(f"   • Total de combinações analisadas: {total_combinations}")
-        print(f"   • Interferências ativas (penalty > 0): {active_interferences}")
-        print(f"   • Sem interferência (penalty = 0): {total_combinations - active_interferences}")
-        print(f"   • Taxa de interferência: {active_interferences/total_combinations*100:.1f}%")
-        print("="*70)
         
     def calculate_wake_penalties(self):
         """Calcula penalidades de esteira tradicional - mesma linha apenas"""
@@ -267,7 +199,7 @@ optimizer = QAOATurbineOptimizer(config_file)
 
 # Exibir matriz de interferências se configurado
 if optimizer.config.get("display", {}).get("show_interference_matrix", True):
-    optimizer.display_interference_matrix()
+    display_interference_matrix(optimizer)
 else:
     print("📊 Matriz de interferências: OCULTA (configurado no JSON)")
     print(f"Total de {len(optimizer.wake_penalties)} possíveis interferências no grid {optimizer.rows}x{optimizer.cols}")
@@ -311,8 +243,10 @@ def objective_function_with_constraints(params, estimator, ansatz, cost_hamilton
     """Função objetivo que inclui penalty dinâmica para restrições min/max turbinas"""
     
     # 1. Calcula energia do Hamiltoniano (QAOA normal)
-    job = estimator.run([ansatz], [cost_hamiltonian], [params])
-    qaoa_energy = job.result().values[0]
+    # Criar PUB (Primitive Unified Block) para EstimatorV2
+    job = estimator.run([(ansatz, cost_hamiltonian, params)])
+    result = job.result()
+    qaoa_energy = result[0].data.evs  # Valor de expectativa (já é escalar)
     
     # 2. Se restrições não estão ativas, retorna energia normal
     if not optimizer.enforce_constraints:
@@ -351,10 +285,41 @@ import time
 # 4. FUNÇÃO AUXILIAR PARA VALIDAR RESTRIÇÕES
 
 def create_qaoa_ansatz(cost_hamiltonian, p):
-    """Cria o ansatz QAOA usando QAOAAnsatz moderno"""
-    # Usando a classe QAOAAnsatz (método recomendado)
-    ansatz = QAOAAnsatz(cost_operator=cost_hamiltonian, reps=p)
-    return ansatz
+    """Cria o ansatz QAOA manualmente para compatibilidade com EstimatorV2"""
+    n_qubits = cost_hamiltonian.num_qubits
+    
+    # Criar circuito
+    circuit = QuantumCircuit(n_qubits)
+    
+    # Estado inicial: superposição uniforme
+    for i in range(n_qubits):
+        circuit.h(i)
+    
+    # Parâmetros QAOA
+    gammas = [Parameter(f'gamma_{i}') for i in range(p)]
+    betas = [Parameter(f'beta_{i}') for i in range(p)]
+    
+    # Camadas QAOA
+    for layer in range(p):
+        # Aplicar operador de custo (problema-dependente)
+        # Para cada termo no Hamiltoniano
+        for pauli, coeff in cost_hamiltonian.to_list():
+            if 'Z' in pauli:
+                # Aplicar rotações Z baseadas nos termos do Hamiltoniano
+                for i, op in enumerate(pauli):
+                    if op == 'Z':
+                        circuit.rz(2 * gammas[layer] * coeff.real, i)
+            elif 'ZZ' in pauli or pauli.count('Z') == 2:
+                # Termos de dois qubits
+                qubits = [i for i, op in enumerate(pauli) if op == 'Z']
+                if len(qubits) == 2:
+                    circuit.rzz(2 * gammas[layer] * coeff.real, qubits[0], qubits[1])
+        
+        # Aplicar operador de mistura (X rotations)
+        for i in range(n_qubits):
+            circuit.rx(2 * betas[layer], i)
+    
+    return circuit
 
   
 
@@ -370,10 +335,10 @@ def run_qaoa(p, max_iter=50):
     
     print(f"Ansatz criado com {ansatz.num_qubits} qubits e {len(ansatz.parameters)} parâmetros")
     
-    # Estimator para calcular valores esperados com shots da configuração
+    # EstimatorV2 para calcular valores esperados com shots da configuração
     shots = optimizer.config.get("qaoa", {}).get("shots", 1024)  # Usar 1024 como fallback
-    estimator = Estimator()
-    estimator.set_options(shots=shots)
+    estimator = EstimatorV2()
+    estimator.options.default_shots = shots
     print(f"Usando {shots} shots por iteração")
     
     # Contador para acompanhar iterações

@@ -8,15 +8,24 @@ This is a quantum computing project implementing QAOA (Quantum Approximate Optim
 
 ## Running the Code
 
-Execute with default configuration:
+**Recommended**: Use the automated script for running simulations:
 ```bash
-python qaoa_turbinas.py
+./run_qaoa.sh                    # Default 2x3 grid
+./run_qaoa.sh config_3x3.json   # 3x3 grid with constraints  
+./run_qaoa.sh config_vertical.json  # 4x2 vertical grid
 ```
 
-Use the automated script:
+Direct execution (alternative):
 ```bash
-./run_qaoa.sh
+python qaoa_turbinas.py
+python qaoa_turbinas.py -c config_3x3.json
 ```
+
+The `run_qaoa.sh` script automatically:
+- Activates the virtual environment
+- Handles configuration file validation
+- Provides helpful error messages
+- Shows available configurations
 
 ## Configuration
 

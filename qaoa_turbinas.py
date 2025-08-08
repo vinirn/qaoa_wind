@@ -206,21 +206,6 @@ score = optimizer.score
 positions_coords = optimizer.positions_coords
 wake_penalties = optimizer.wake_penalties
 
-def create_cost_hamiltonian_ANTIGO():
-    """Cria o Hamiltoniano de custo usando SparsePauliOp moderno"""
-    pauli_list = []
-    
-    # Termos lineares (score): -score[i] * Z[i] 
-    for i in range(optimizer.n_positions):
-        pauli_list.append(("Z", [i], -score[i]))  # Negativo para maximizar
-    
-    # Termos quadráticos (penalidades): penalty * Z[i] * Z[j]
-    for (i, j), penalty in wake_penalties.items():
-        pauli_list.append(("ZZ", [i, j], penalty))  # Positivo para penalizar
-    
-    # Usando from_sparse_list (método moderno recomendado)
-    return SparsePauliOp.from_sparse_list(pauli_list, num_qubits=optimizer.n_positions)
-    
 def create_cost_hamiltonian():
     """Cria o Hamiltoniano de custo - apenas score e wake penalties"""
     pauli_list = []

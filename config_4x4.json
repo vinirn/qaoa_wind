@@ -9,7 +9,7 @@
     "description": "Direção do vento: oeste→leste"
   },
   "wake_effects": {
-    "base_penalty": 4.0,
+    "base_penalty": 6.0,
     "distance_decay": 1.0,
     "description": "Penalidade de esteira: base_penalty - (distância × distance_decay)"
   },
@@ -23,7 +23,7 @@
     "optimizer": "COBYLA",
     "optimizer_options": {
       "maxiter": 100,
-      "rhobeg": 0.7
+      "rhobeg": 0.5
     },
     "shots": 1024,
     "description": ""
@@ -31,8 +31,8 @@
   "constraints": {
     "min_turbines": 5,
     "max_turbines": 6,
-    "enforce_constraints": true,
-    "constraint_penalty": 25.0,
+    "enforce_constraints": false,
+    "constraint_penalty": 20.0,
     "description": ""
   },
   "display": {

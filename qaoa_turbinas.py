@@ -11,7 +11,8 @@ import os
 import sys
 from utils import (parse_arguments, list_available_configs, load_config, get_config_file,
                    validate_constraints, evaluate_solution, show_active_penalties, 
-                   bitstring_to_grid, display_grid, display_interference_matrix)
+                   bitstring_to_grid, display_grid, display_interference_matrix, plot_cost_evolution,
+                   load_ibm_api_key, confirm_ibm_execution)
 from qiskit.quantum_info import SparsePauliOp
 from qiskit import QuantumCircuit
 from qiskit.circuit import Parameter
@@ -169,29 +170,25 @@ def run_optimization(optimizer):
     try:
         # Obter maxiter das opções do otimizador ou usar padrão
         max_iter = optimizer.config["qaoa"].get("optimizer_options", {}).get("maxiter", 50)
-        counts, optimal_value = run_qaoa(p=optimizer.config["qaoa"]["layers"], max_iter=max_iter)
+        counts, optimal_value, cost_history = run_qaoa(p=optimizer.config["qaoa"]["layers"], max_iter=max_iter)
+        
+        # Gerar gráfico de evolução do custo
+        plot_cost_evolution(cost_history, config_file)
+        
         analyze_results(counts)
         
     except Exception as e:
-        print(f"Erro na execução do QAOA: {e}")
-        print("\nExecutando solução clássica de referência...")
+        print(f"❌ ERRO DETALHADO NA EXECUÇÃO DO QAOA:")
+        print(f"   • Tipo do erro: {type(e).__name__}")
+        print(f"   • Mensagem: {str(e)}")
         
-        # Comparação clássica (apenas para grids pequenos)
-        if optimizer.n_positions <= 20:  # Evitar explosão exponencial
-            best_value = float('-inf')
-            best_solution = None
-            
-            for i in range(2**optimizer.n_positions):
-                bitstring = format(i, f'0{optimizer.n_positions}b')
-                value = evaluate_solution(bitstring, score, wake_penalties, optimizer)
-                if value > best_value:
-                    best_value = value
-                    best_solution = bitstring
-            
-            print(f"Melhor solução clássica: {best_solution}")
-            print(f"Score líquido: {best_value}")
-        else:
-            print("Grid muito grande para busca exaustiva clássica.")
+        # Mostrar traceback completo para debug
+        import traceback
+        print(f"   • Stack trace:")
+        traceback.print_exc()
+        
+        print("\n💔 Execução interrompida devido ao erro.")
+        sys.exit(1)
 
 # Instanciar o otimizador com arquivo apropriado
 config_file = get_config_file()
@@ -325,7 +322,7 @@ def create_qaoa_ansatz(cost_hamiltonian, p):
 
 
 
-def run_qaoa(p, max_iter=50):
+def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
     """Executa o algoritmo QAOA usando APIs modernas"""
     print(f"\nConfigurando QAOA com p={p} camadas...")
     
@@ -335,14 +332,77 @@ def run_qaoa(p, max_iter=50):
     
     print(f"Ansatz criado com {ansatz.num_qubits} qubits e {len(ansatz.parameters)} parâmetros")
     
-    # EstimatorV2 para calcular valores esperados com shots da configuração
-    shots = optimizer.config.get("qaoa", {}).get("shots", 1024)  # Usar 1024 como fallback
-    estimator = EstimatorV2()
-    estimator.options.default_shots = shots
-    print(f"Usando {shots} shots por iteração")
+    # Configurar EstimatorV2 baseado no modo
+    shots = optimizer.config.get("qaoa", {}).get("shots", 1024)
     
-    # Contador para acompanhar iterações
+    if use_ibm_quantum:
+        try:
+            from qiskit_ibm_runtime import EstimatorV2 as IBMEstimatorV2, QiskitRuntimeService
+            
+            # Carregar API key e configurar serviço
+            api_key = load_ibm_api_key()
+            
+            # Sempre usar sua instância específica
+            instance = "meu_primeiro_computador_quantico"
+            
+            # Salvar credenciais com instância
+            QiskitRuntimeService.save_account(
+                token=api_key, 
+                instance=instance,
+                overwrite=True
+            )
+            
+            # Conectar especificando a instância
+            service = QiskitRuntimeService(instance=instance)
+            
+            # Usar backends disponíveis na sua instância
+            # Tentar ibm_torino primeiro (menos fila), depois ibm_brisbane
+            try:
+                backend = service.backend("ibm_torino")
+            except:
+                backend = service.backend("ibm_brisbane")
+            # Criar EstimatorV2 com configurações de shots
+            estimator = IBMEstimatorV2(mode=backend, options={"default_shots": shots})
+            
+            print(f"🌐 Conectado ao IBM Quantum: {backend.name}")
+            print(f"   • Qubits disponíveis: {backend.configuration().num_qubits}")
+            print(f"   • Status: {backend.status().status_msg}")
+            print(f"   • Shots por iteração: {shots}")
+            print(f"   • Transpilação automática: nível 3")
+            
+        except ImportError:
+            print("❌ qiskit-ibm-runtime não encontrado. Execute: pip install qiskit-ibm-runtime")
+            sys.exit(1)
+        except Exception as e:
+            print(f"❌ Erro ao conectar com IBM Quantum: {e}")
+            sys.exit(1)
+    else:
+        # Modo simulação local
+        estimator = EstimatorV2()
+        estimator.options.default_shots = shots
+        print(f"🖥️  Usando simulação local com {shots} shots por iteração")
+    
+    # Para IBM Quantum, usar transpilação manual recomendada pela IBM
+    if use_ibm_quantum:
+        from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+        
+        pm = generate_preset_pass_manager(backend=backend, optimization_level=3)
+        ansatz = pm.run(ansatz)
+        
+        # Expandir o Hamiltoniano para match com o número de qubits do circuito transpilado
+        n_qubits_transpiled = ansatz.num_qubits
+        if n_qubits_transpiled > cost_hamiltonian.num_qubits:
+            # Criar Hamiltoniano expandido corretamente
+            extra_qubits = n_qubits_transpiled - cost_hamiltonian.num_qubits
+            identity_op = SparsePauliOp.from_list([("I" * extra_qubits, 1.0)])
+            cost_hamiltonian = cost_hamiltonian.tensor(identity_op)
+            print(f"   • Hamiltoniano expandido de {optimizer.n_positions} para {n_qubits_transpiled} qubits")
+        
+        print(f"✅ Circuito transpilado para {backend.name} usando preset pass manager")
+        
+    # Contador para acompanhar iterações e histórico de custos
     iteration_count = [0]  # Lista para permitir modificação dentro da função aninhada
+    cost_history = []  # Lista para armazenar histórico de custos
     
     def cost_function(params):
         """Função de custo com penalty dinâmica para restrições"""
@@ -358,11 +418,22 @@ def run_qaoa(p, max_iter=50):
             circuit = ansatz.assign_parameters(params)
             circuit.measure_all()
             
-            # Simular
-            simulator = AerSimulator()
-            transpiled = transpile(circuit, simulator)
-            job = simulator.run(transpiled, shots=shots)
-            counts = job.result().get_counts()
+            if use_ibm_quantum:
+                # Usar IBM Quantum
+                from qiskit import transpile
+                from qiskit_ibm_runtime import SamplerV2
+                
+                sampler = SamplerV2(mode=backend)
+                transpiled = transpile(circuit, backend, optimization_level=3)
+                job = sampler.run([transpiled], shots=shots)
+                result = job.result()
+                counts = result[0].data.meas.get_counts()
+            else:
+                # Simular localmente
+                simulator = AerSimulator()
+                transpiled = transpile(circuit, simulator)
+                job = simulator.run(transpiled, shots=shots)
+                counts = job.result().get_counts()
             
             # Converter para quasi_dist format
             total_shots = sum(counts.values())
@@ -377,6 +448,9 @@ def run_qaoa(p, max_iter=50):
         else:
             # Mostrar apenas os primeiros 3 e últimos 3
             params_str = ", ".join([f"{p:6.3f}" for p in params[:3]]) + " ... " + ", ".join([f"{p:6.3f}" for p in params[-3:]])
+        
+        # Armazenar histórico para plotagem
+        cost_history.append(cost_value)
         
         # Imprimir progresso da otimização
         print(f"  Iteração {iteration_count[0]:3d}: Custo = {cost_value:8.4f} | Params: [{params_str}]")
@@ -419,86 +493,37 @@ def run_qaoa(p, max_iter=50):
     print(f"Valor ótimo encontrado: {result.fun}")
     
     # Executar circuito final para obter distribuição
-    from qiskit_aer import AerSimulator
-    from qiskit import transpile
-    
-    # Preparar circuito final com medições
     final_circuit = ansatz.assign_parameters(result.x)
     final_circuit.measure_all()
     
-    # Simular com shots da configuração
-    simulator = AerSimulator()
-    transpiled_circuit = transpile(final_circuit, simulator)
-    job = simulator.run(transpiled_circuit, shots=shots)
-    counts = job.result().get_counts()
-    
-    return counts, result.fun
-
-
-
-def analyze_results_ANTIGO(counts):
-    """Analisa os resultados do QAOA"""
-    print("\n" + "="*50)
-    print("RESULTADOS DO QAOA")
-    print("="*50)
-    
-    # Encontrar a melhor solução
-    best_bitstring = max(counts, key=counts.get)
-    best_count = counts[best_bitstring]
-    best_probability = best_count / sum(counts.values())
-    
-    print(f"\nMelhor solução encontrada: {best_bitstring}")
-    print(f"Probabilidade: {best_probability:.3f} ({best_count}/1024 medições)")
-    
-    # Converter para formato de grid
-    solution = bitstring_to_grid(best_bitstring)
-    display_grid(solution, optimizer, "MELHOR CONFIGURAÇÃO")
-    
-    # Mostrar penalidades efetivas
-    total_penalty = show_active_penalties(solution, wake_penalties, positions_coords)
-    
-    # Métricas
-    installed_positions = [i for i in range(optimizer.n_positions) if solution[i] == 1]
-    total_score = sum(solution[i] * score[i] for i in range(optimizer.n_positions))
-    
-    print(f"\n📊 MÉTRICAS:")
-    print(f"   • Número de turbinas: {len(installed_positions)}")
-    print(f"   • Score total: {total_score}")
-    print(f"   • Penalidades: {total_penalty}")
-    print(f"   • Score líquido: {total_score - total_penalty}")
-    
-    # Mostrar produção por posição
-    print(f"\n⚡ PRODUÇÃO POR POSIÇÃO:")
-    for i in range(optimizer.n_positions):
-        row, col = i // optimizer.cols, i % optimizer.cols
-        status = "🟢 ATIVA" if solution[i] == 1 else "⚪ VAZIA"
-        sc = score[i] if solution[i] == 1 else 0
-        print(f"   ({row},{col}) - {status} - Score: {sc:.1f}")
-    
-    # Top 5 soluções com visualização
-    print(f"\n🏆 TOP 5 SOLUÇÕES MAIS PROVÁVEIS:")
-    sorted_counts = sorted(counts.items(), key=lambda x: x[1], reverse=True)
-    for i, (bitstring, count) in enumerate(sorted_counts[:5]):
-        prob = count / sum(counts.values())
-        value = evaluate_solution(bitstring)
-        sol = bitstring_to_grid(bitstring)
+    if use_ibm_quantum:
+        # Executar no hardware IBM
+        from qiskit import transpile
+        from qiskit_ibm_runtime import SamplerV2
         
-        # Formato compacto do grid
-        if optimizer.rows == 2 and optimizer.cols == 3:
-            grid_compact = f"[{sol[0]}{sol[1]}{sol[2]}|{sol[3]}{sol[4]}{sol[5]}]"
-        else:
-            # Para grids maiores, mostrar apenas as posições ativas
-            active_pos = [str(i) for i in range(optimizer.n_positions) if sol[i] == 1]
-            grid_compact = f"[{','.join(active_pos) if active_pos else 'vazio'}]"
+        sampler = SamplerV2(mode=backend)
+        transpiled_circuit = transpile(final_circuit, backend, optimization_level=3)
         
-        print(f"   {i+1}. {grid_compact} - {prob:.3f} - Score: {value}")
+        print(f"🚀 Executando circuito final no {backend.name}...")
+        job = sampler.run([transpiled_circuit], shots=shots)
+        result_final = job.result()
+        counts = result_final[0].data.meas.get_counts()
         
-        # Mostrar grid completo apenas para as 3 melhores
-        if i < 3:
-            display_grid(sol, optimizer, f"Solução #{i+1}")
-            
+    else:
+        # Simular localmente
+        from qiskit_aer import AerSimulator
+        from qiskit import transpile
+        
+        simulator = AerSimulator()
+        transpiled_circuit = transpile(final_circuit, simulator)
+        job = simulator.run(transpiled_circuit, shots=shots)
+        counts = job.result().get_counts()
+    
+    return counts, result.fun, cost_history
 
-# 6. MODIFICAÇÃO NA FUNÇÃO analyze_results
+
+
+# 6. FUNÇÃO analyze_results COM VALIDAÇÃO DE RESTRIÇÕES E RANKING
 def analyze_results(counts):
     """Analisa os resultados do QAOA com validação de restrições"""
     print("\n" + "="*50)
@@ -569,6 +594,28 @@ def analyze_results(counts):
         sc = score[i] if solution[i] == 1 else 0
         print(f"   Pos ({row},{col}): {status} Score: {sc:.1f}")
         
+    # Top 5 soluções com visualização
+    print(f"\n🏆 TOP 5 SOLUÇÕES MAIS PROVÁVEIS:")
+    sorted_counts = sorted(counts.items(), key=lambda x: x[1], reverse=True)
+    for i, (bitstring, count) in enumerate(sorted_counts[:5]):
+        prob = count / sum(counts.values())
+        value = evaluate_solution(bitstring, score, wake_penalties, optimizer)
+        sol = bitstring_to_grid(bitstring)
+        
+        # Formato compacto do grid
+        if optimizer.rows == 2 and optimizer.cols == 3:
+            grid_compact = f"[{sol[0]}{sol[1]}{sol[2]}|{sol[3]}{sol[4]}{sol[5]}]"
+        else:
+            # Para grids maiores, mostrar apenas as posições ativas
+            active_pos = [str(i) for i in range(optimizer.n_positions) if sol[i] == 1]
+            grid_compact = f"[{','.join(active_pos) if active_pos else 'vazio'}]"
+        
+        print(f"   {i+1}. {grid_compact} - {prob:.3f} - Score: {value:.2f}")
+        
+        # Mostrar grid completo apenas para as 3 melhores
+        if i < 3:
+            display_grid(sol, optimizer, f"Solução #{i+1}")
+            
     # Resumo final com destaque para restrições
     print(f"\n" + "="*50)
     print(f"RESUMO FINAL")
@@ -606,6 +653,13 @@ if __name__ == "__main__":
         compare_hamiltonian_implementations()
         sys.exit(0)
     
+    # Verificar se IBM Quantum foi solicitado
+    use_ibm = args.ibm_quantum
+    if use_ibm:
+        # Confirmar execução no IBM Quantum
+        if not confirm_ibm_execution(optimizer.config):
+            sys.exit(0)
+    
     print(f"\n🚀 INICIANDO OTIMIZAÇÃO QAOA...")
     print(f"\n📋 RESUMO DAS RESTRIÇÕES:")
     if optimizer.enforce_constraints:
@@ -623,26 +677,22 @@ if __name__ == "__main__":
         print(f"\n🔧 QAOA: {p_layers} camadas, {max_iterations} iterações do otimizador")
         
         # Executar QAOA
-        counts, optimal_value = run_qaoa(p=p_layers, max_iter=max_iterations)
+        counts, optimal_value, cost_history = run_qaoa(p=p_layers, max_iter=max_iterations, use_ibm_quantum=use_ibm)
+        
+        # Gerar gráfico de evolução do custo
+        plot_cost_evolution(cost_history, optimizer.config.get('grid', {}).get('description', 'qaoa_run'))
+        
         analyze_results(counts)
         
     except Exception as e:
-        print(f"Erro na execução do QAOA: {e}")
-        print("\nExecutando solução clássica de referência...")
+        print(f"❌ ERRO DETALHADO NA EXECUÇÃO DO QAOA:")
+        print(f"   • Tipo do erro: {type(e).__name__}")
+        print(f"   • Mensagem: {str(e)}")
         
-        # Comparação clássica (apenas para grids pequenos)
-        if optimizer.n_positions <= 20:  # Evitar explosão exponencial
-            best_value = float('-inf')
-            best_solution = None
-            
-            for i in range(2**optimizer.n_positions):
-                bitstring = format(i, f'0{optimizer.n_positions}b')
-                value = evaluate_solution(bitstring, score, wake_penalties, optimizer)
-                if value > best_value:
-                    best_value = value
-                    best_solution = bitstring
-            
-            print(f"Melhor solução clássica: {best_solution}")
-            print(f"Score líquido: {best_value}")
-        else:
-            print("Grid muito grande para busca exaustiva clássica.")
+        # Mostrar traceback completo para debug
+        import traceback
+        print(f"   • Stack trace:")
+        traceback.print_exc()
+        
+        print("\n💔 Execução interrompida devido ao erro.")
+        sys.exit(1)

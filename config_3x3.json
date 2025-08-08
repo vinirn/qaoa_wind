@@ -2,14 +2,14 @@
   "grid": {
     "rows": 3,
     "cols": 3,
-    "description": "Grid 3x3 - mais complexo"
+    "description": "Grid 3x3"
   },
   "wind": {
     "direction": [0, 1],
     "description": "Direção do vento: oeste→leste"
   },
   "wake_effects": {
-    "base_penalty": 4.0,
+    "base_penalty": 6.0,
     "distance_decay": 1.0,
     "description": "Penalidade de esteira: base_penalty - (distância × distance_decay)"
   },
@@ -22,16 +22,16 @@
     "layers": 2,
     "optimizer": "COBYLA",
     "optimizer_options": {
-      "maxiter": 100,
+      "maxiter": 50,
       "rhobeg": 0.7
     },
-    "shots": 1024,
+    "shots": 100,
     "description": "Balanceado: precisão vs velocidade para QAOA"
   },
   "constraints": {
-    "min_turbines": 2,
-    "max_turbines": 4,
-    "enforce_constraints": true,
+    "enforce_constraints": false,
+    "min_turbines": 3,
+    "max_turbines": 3,
     "constraint_penalty": 10.0,
     "description": "Exatamente 3 turbinas (restrição ATIVA)"
   },

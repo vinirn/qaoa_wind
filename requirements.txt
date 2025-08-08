@@ -4,10 +4,12 @@
 # Core Qiskit packages
 qiskit>=2.1.0
 qiskit-aer>=0.17.0
+qiskit-ibm-runtime
 
 # Dependências científicas
 numpy>=2.0.0
 scipy>=1.15.0
+matplotlib>=3.7.0
 
 # Otimização (já incluída no scipy, mas explícita para clareza)
 # scipy.optimize é usada para otimização dos parâmetros QAOA

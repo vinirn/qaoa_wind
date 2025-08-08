@@ -31,7 +31,7 @@
   "constraints": {
     "max_turbines": 3,
     "min_turbines": 3,
-    "enforce_constraints": true,
+    "enforce_constraints": false,
     "constraint_penalty": 10.0,
     "description": "Exatamente 3 turbinas (restrição ATIVA)"
   },

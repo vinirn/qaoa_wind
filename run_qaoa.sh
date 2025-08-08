@@ -39,8 +39,14 @@ elif [ "$1" = "--list-configs" ]; then
     exit 0
 elif [[ "$1" == *.json ]]; then
     # Se primeiro argumento é um arquivo JSON, usar como configuração
-    COMMAND="python qaoa_turbinas.py -c $1"
-    echo "🚀 Executando QAOA com configuração: $1"
+    # Mas passar todos os demais argumentos também
+    if [ $# -gt 1 ]; then
+        COMMAND="python qaoa_turbinas.py -c $1 ${@:2}"
+        echo "🚀 Executando QAOA com configuração: $1 e argumentos: ${@:2}"
+    else
+        COMMAND="python qaoa_turbinas.py -c $1"
+        echo "🚀 Executando QAOA com configuração: $1"
+    fi
 else
     # Passar todos os argumentos para o script Python
     COMMAND="python qaoa_turbinas.py $*"
@@ -61,6 +67,7 @@ echo "💡 Formas de executar:"
 echo "   ./run_qaoa.sh                    # Configuração padrão"
 echo "   ./run_qaoa.sh config_3x3.json   # Grid 3x3"
 echo "   ./run_qaoa.sh config_vertical.json # Grid vertical"
+echo "   ./run_qaoa.sh config_3x3.json --ibm-quantum # IBM Quantum"
 echo "   ./run_qaoa.sh --list-configs     # Listar configurações"
 echo "   ./run_qaoa.sh --help             # Ajuda"
 echo ""

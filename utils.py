@@ -2,6 +2,8 @@ import argparse
 import os
 import json
 import sys
+import matplotlib.pyplot as plt
+from datetime import datetime
 
 def parse_arguments():
     """Processa argumentos da linha de comando"""
@@ -39,6 +41,12 @@ Arquivos de configuração disponíveis:
         '--benchmark-hamiltonian',
         action='store_true',
         help='Compara performance das implementações do Hamiltoniano'
+    )
+    
+    parser.add_argument(
+        '--ibm-quantum',
+        action='store_true',
+        help='Executa no computador quântico IBM (requer confirmação)'
     )
     
     return parser.parse_args()
@@ -234,6 +242,106 @@ def display_interference_matrix(optimizer):
     print(f"   • Taxa de interferência: {active_interferences/total_combinations*100:.1f}%")
     print("="*70)
 
+def plot_cost_evolution(cost_history, config_name="config", save_plot=True):
+    """Gera gráfico da evolução do custo durante a otimização QAOA"""
+    plt.figure(figsize=(10, 6))
+    
+    iterations = range(1, len(cost_history) + 1)
+    plt.plot(iterations, cost_history, 'b-', linewidth=2, marker='o', markersize=4, alpha=0.7)
+    
+    plt.title(f'Evolução do Custo - QAOA Otimização\nConfiguração: {config_name}', fontsize=14, fontweight='bold')
+    plt.xlabel('Iteração', fontsize=12)
+    plt.ylabel('Valor da Função de Custo', fontsize=12)
+    plt.grid(True, alpha=0.3)
+    
+    # Destacar o melhor valor
+    min_cost = min(cost_history)
+    min_iteration = cost_history.index(min_cost) + 1
+    plt.plot(min_iteration, min_cost, 'ro', markersize=8, label=f'Melhor: {min_cost:.4f} (iter {min_iteration})')
+    
+    # Adicionar informações estatísticas
+    plt.text(0.02, 0.98, f'Total de iterações: {len(cost_history)}\nMelhor custo: {min_cost:.4f}\nCusto final: {cost_history[-1]:.4f}', 
+             transform=plt.gca().transAxes, fontsize=10, verticalalignment='top',
+             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+    
+    plt.legend()
+    plt.tight_layout()
+    
+    if save_plot:
+        # Criar pasta images se não existir
+        if not os.path.exists('images'):
+            os.makedirs('images')
+            
+        # Gerar nome do arquivo com timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"images/qaoa_optimization_{config_name.replace('.json', '')}_{timestamp}.png"
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
+        print(f"\n📊 Gráfico salvo como: {filename}")
+        
+        # Também salvar uma versão simples sem timestamp para fácil visualização
+        simple_filename = f"images/qaoa_latest_{config_name.replace('.json', '')}.png"
+        plt.savefig(simple_filename, dpi=300, bbox_inches='tight')
+        print(f"📊 Versão simples salva como: {simple_filename}")
+    
+    # Não mostrar o plot na tela para evitar problemas em ambientes sem display
+    # plt.show()
+    plt.close()
+
+def load_ibm_api_key():
+    """Carrega a API key da IBM do arquivo apikey.json"""
+    api_file = "apikey.json"
+    if not os.path.exists(api_file):
+        raise FileNotFoundError(f"Arquivo {api_file} não encontrado. Crie o arquivo com sua API key da IBM.")
+    
+    with open(api_file, 'r') as f:
+        api_data = json.load(f)
+    
+    api_key = api_data.get('apikey')
+    if not api_key:
+        raise ValueError(f"Campo 'apikey' não encontrado no arquivo {api_file}")
+    
+    return api_key
+
+def confirm_ibm_execution(config):
+    """Confirma execução no IBM Quantum com informações de custo"""
+    print("\n" + "="*60)
+    print("🚨 EXECUÇÃO NO IBM QUANTUM DETECTADA")
+    print("="*60)
+    
+    # Calcular custos estimados
+    shots = config.get("qaoa", {}).get("shots", 1024)
+    max_iter = config.get("qaoa", {}).get("optimizer_options", {}).get("maxiter", 50)
+    total_shots = shots * max_iter
+    
+    print(f"📊 Parâmetros configurados:")
+    print(f"   • Shots por iteração: {shots}")
+    print(f"   • Iterações máximas: {max_iter}")
+    print(f"   • Total de shots: {total_shots:,}")
+    
+    print(f"\n💰 Custo (Plano Open - GRATUITO):")
+    print(f"   • Custo: $0.00 (plano gratuito)")
+    
+    print(f"\n⏱️  Tempo estimado:")
+    print(f"   • Fila de espera: ibm_brisbane (~1613 jobs), ibm_torino (~5379 jobs)")
+    print(f"   • Execução: 3-8min")
+    print(f"   • Tempo restante na instância: 10 minutos")
+    
+    print(f"\n⚠️  IMPORTANTE:")
+    print(f"   • Esta é uma execução em HARDWARE QUÂNTICO REAL")
+    print(f"   • O custo será cobrado da sua conta IBM")
+    print(f"   • A execução pode falhar por problemas de hardware")
+    
+    while True:
+        response = input(f"\n🤔 Deseja continuar? [y/N]: ").strip().lower()
+        if response in ['y', 'yes', 'sim', 's']:
+            print("✅ Execução confirmada. Iniciando...")
+            return True
+        elif response in ['n', 'no', 'não', 'nao', ''] or not response:
+            print("❌ Execução cancelada.")
+            return False
+        else:
+            print("❓ Resposta inválida. Digite 'y' para sim ou 'n' para não.")
+
 def display_grid(solution, optimizer, title=None):
     """Exibe o grid de forma visual dinamicamente"""
     if title is None:
@@ -269,15 +377,3 @@ def display_grid(solution, optimizer, title=None):
     line_bottom = "   └" + "─────┴" * (optimizer.cols - 1) + "─────┘"
     print(line_bottom)
     
-    # Mostrar coordenadas das turbinas instaladas
-    installed = []
-    for i in range(optimizer.n_positions):
-        if solution[i] == 1:
-            row = i // optimizer.cols
-            col = i % optimizer.cols
-            installed.append(f"({row},{col})")
-    
-    if installed:
-        print(f"Turbinas em: {', '.join(installed)}")
-    else:
-        print("Nenhuma turbina instalada")

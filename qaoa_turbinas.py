@@ -12,7 +12,7 @@ import sys
 from utils import (parse_arguments, list_available_configs, load_config, get_config_file,
                    validate_constraints, evaluate_solution, show_active_penalties, 
                    bitstring_to_grid, display_grid, display_interference_matrix, plot_cost_evolution,
-                   load_ibm_api_key, confirm_ibm_execution)
+                   load_ibm_api_key, load_ibm_config, confirm_ibm_execution)
 from qiskit.quantum_info import SparsePauliOp
 from qiskit import QuantumCircuit
 from qiskit.circuit import Parameter
@@ -339,11 +339,14 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
         try:
             from qiskit_ibm_runtime import EstimatorV2 as IBMEstimatorV2, QiskitRuntimeService
             
-            # Carregar API key e configurar serviço
+            # Carregar configurações IBM
             api_key = load_ibm_api_key()
+            ibm_config = load_ibm_config()
             
-            # Sempre usar sua instância específica
-            instance = "meu_primeiro_computador_quantico"
+            # Usar configurações do ibm.json
+            instance = ibm_config['instance']
+            primary_backend = ibm_config['backends']['primary']
+            fallback_backend = ibm_config['backends']['fallback']
             
             # Salvar credenciais com instância
             QiskitRuntimeService.save_account(
@@ -355,12 +358,13 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
             # Conectar especificando a instância
             service = QiskitRuntimeService(instance=instance)
             
-            # Usar backends disponíveis na sua instância
-            # Tentar ibm_torino primeiro (menos fila), depois ibm_brisbane
+            # Tentar backend primário primeiro, depois fallback
             try:
-                backend = service.backend("ibm_torino")
+                backend = service.backend(primary_backend)
+                print(f"   🎯 Usando backend primário: {primary_backend}")
             except:
-                backend = service.backend("ibm_brisbane")
+                backend = service.backend(fallback_backend)
+                print(f"   🔄 Fallback para: {fallback_backend}")
             # Criar EstimatorV2 com configurações de shots
             estimator = IBMEstimatorV2(mode=backend, options={"default_shots": shots})
             
@@ -386,8 +390,11 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
     if use_ibm_quantum:
         from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
         
-        pm = generate_preset_pass_manager(backend=backend, optimization_level=3)
+        # Usar nível de otimização do ibm.json
+        opt_level = ibm_config.get('transpilation', {}).get('optimization_level', 3)
+        pm = generate_preset_pass_manager(backend=backend, optimization_level=opt_level)
         ansatz = pm.run(ansatz)
+        print(f"   ⚙️  Transpilação: nível {opt_level}")
         
         # Expandir o Hamiltoniano para match com o número de qubits do circuito transpilado
         n_qubits_transpiled = ansatz.num_qubits
@@ -424,7 +431,8 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
                 from qiskit_ibm_runtime import SamplerV2
                 
                 sampler = SamplerV2(mode=backend)
-                transpiled = transpile(circuit, backend, optimization_level=3)
+                opt_level = ibm_config.get('transpilation', {}).get('optimization_level', 3)
+                transpiled = transpile(circuit, backend, optimization_level=opt_level)
                 job = sampler.run([transpiled], shots=shots)
                 result = job.result()
                 counts = result[0].data.meas.get_counts()
@@ -502,7 +510,8 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
         from qiskit_ibm_runtime import SamplerV2
         
         sampler = SamplerV2(mode=backend)
-        transpiled_circuit = transpile(final_circuit, backend, optimization_level=3)
+        opt_level = ibm_config.get('transpilation', {}).get('optimization_level', 3)
+        transpiled_circuit = transpile(final_circuit, backend, optimization_level=opt_level)
         
         print(f"🚀 Executando circuito final no {backend.name}...")
         job = sampler.run([transpiled_circuit], shots=shots)

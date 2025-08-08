@@ -1,0 +1,30 @@
+{
+  "instance": "meu_primeiro_computador_quantico",
+  "backends": {
+    "primary": "ibm_torino",
+    "fallback": "ibm_brisbane",
+    "description": "ibm_torino preferido (menos fila), fallback para ibm_brisbane"
+  },
+  "queue_info": {
+    "ibm_torino": {
+      "qubits": 133,
+      "processor": "Heron r1",
+      "typical_queue": "~5379 jobs"
+    },
+    "ibm_brisbane": {
+      "qubits": 127,
+      "processor": "Eagle r3", 
+      "typical_queue": "~1613 jobs"
+    }
+  },
+  "plan": {
+    "type": "Open",
+    "cost_per_shot": 0.0,
+    "monthly_limit": "10 minutes",
+    "region": "us-east"
+  },
+  "transpilation": {
+    "optimization_level": 3,
+    "description": "Nível máximo de otimização para melhor performance"
+  }
+}

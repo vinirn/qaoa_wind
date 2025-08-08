@@ -302,8 +302,29 @@ def load_ibm_api_key():
     
     return api_key
 
+def load_ibm_config():
+    """Carrega configurações da IBM do arquivo ibm.json"""
+    ibm_file = "ibm.json"
+    if not os.path.exists(ibm_file):
+        raise FileNotFoundError(f"Arquivo {ibm_file} não encontrado. Crie o arquivo com suas configurações IBM.")
+    
+    with open(ibm_file, 'r') as f:
+        ibm_config = json.load(f)
+    
+    return ibm_config
+
 def confirm_ibm_execution(config):
     """Confirma execução no IBM Quantum com informações de custo"""
+    try:
+        ibm_config = load_ibm_config()
+    except:
+        print("❌ Arquivo ibm.json não encontrado. Usando configurações padrão.")
+        ibm_config = {
+            "instance": "meu_primeiro_computador_quantico",
+            "backends": {"primary": "ibm_torino", "fallback": "ibm_brisbane"},
+            "plan": {"type": "Open", "monthly_limit": "10 minutos"}
+        }
+    
     print("\n" + "="*60)
     print("🚨 EXECUÇÃO NO IBM QUANTUM DETECTADA")
     print("="*60)
@@ -318,18 +339,29 @@ def confirm_ibm_execution(config):
     print(f"   • Iterações máximas: {max_iter}")
     print(f"   • Total de shots: {total_shots:,}")
     
-    print(f"\n💰 Custo (Plano Open - GRATUITO):")
-    print(f"   • Custo: $0.00 (plano gratuito)")
+    print(f"\n💰 Custo ({ibm_config['plan']['type']} Plan):")
+    cost = ibm_config['plan'].get('cost_per_shot', 0.0) * total_shots
+    if cost == 0:
+        print(f"   • Custo: $0.00 (plano gratuito)")
+    else:
+        print(f"   • Custo estimado: ${cost:.2f}")
+    
+    print(f"\n🌐 Instância e Backends:")
+    print(f"   • Instância: {ibm_config['instance']}")
+    print(f"   • Backend primário: {ibm_config['backends']['primary']}")
+    print(f"   • Backend fallback: {ibm_config['backends']['fallback']}")
     
     print(f"\n⏱️  Tempo estimado:")
-    print(f"   • Fila de espera: ibm_brisbane (~1613 jobs), ibm_torino (~5379 jobs)")
+    queue_info = ibm_config.get('queue_info', {})
+    for backend, info in queue_info.items():
+        print(f"   • {backend}: {info['qubits']} qubits, fila {info.get('typical_queue', 'N/A')}")
     print(f"   • Execução: 3-8min")
-    print(f"   • Tempo restante na instância: 10 minutos")
+    print(f"   • Limite mensal: {ibm_config['plan']['monthly_limit']}")
     
     print(f"\n⚠️  IMPORTANTE:")
     print(f"   • Esta é uma execução em HARDWARE QUÂNTICO REAL")
-    print(f"   • O custo será cobrado da sua conta IBM")
     print(f"   • A execução pode falhar por problemas de hardware")
+    print(f"   • Configurações definidas em ibm.json")
     
     while True:
         response = input(f"\n🤔 Deseja continuar? [y/N]: ").strip().lower()

@@ -9,7 +9,7 @@
     "description": "Direção do vento: oeste→leste"
   },
   "penalties": {
-    "max_penalty": 4,
+    "max_penalty": 20,
     "decay_factor": 1,
     "description": "Penalidade maior para grid maior"
   },
@@ -23,11 +23,12 @@
     "optimizer": "COBYLA",
     "optimizer_options": {
       "maxiter": 200,
-      "rhobeg": 0.7
+      "rhobeg": 0.5
     },
     "shots": 100,
-    "initial_param_range": "pi/4",
-    "description": "Balanceado: precisão vs velocidade para QAOA"
+    "gamma_range": "2*pi",
+    "beta_range": "pi",
+    "description": "Ranges físicos: gamma [0,2π] para custo, beta [0,π] para mistura"
   },
   "constraints": {
     "max_turbines": 3,

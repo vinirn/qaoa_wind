@@ -19,15 +19,16 @@
     "description": "Score constante para todas as posições"
   },
   "qaoa": {
-    "layers": 1,
+    "layers": 4,
     "optimizer": "COBYLA",
     "optimizer_options": {
-      "maxiter": 200,
+      "maxiter": 400,
       "rhobeg": 0.5
     },
     "shots": 1024,
-    "initial_param_range": "2*pi",
-    "description": "initial_param_range: pi/4, pi/2, pi, 2*pi, etc."
+    "gamma_range": "2*pi",
+    "beta_range": "pi",
+    "description": "Ranges físicos: gamma [0,2π] para custo, beta [0,π] para mistura"
   },
   "constraints": {
     "min_turbines": 5,

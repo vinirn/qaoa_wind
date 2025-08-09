@@ -214,7 +214,8 @@ def log_simulation_results(config, config_file, optimal_value, best_bitstring, c
     maxiter = qaoa_config.get("optimizer_options", {}).get("maxiter", None)
     rhobeg = qaoa_config.get("optimizer_options", {}).get("rhobeg", None)
     shots = qaoa_config["shots"]
-    initial_param_range = qaoa_config.get("initial_param_range", "pi/4")
+    gamma_range_str = qaoa_config.get("gamma_range", qaoa_config.get("initial_param_range", "2*pi"))
+    beta_range_str = qaoa_config.get("beta_range", qaoa_config.get("initial_param_range", "pi"))
     
     # Constraints parameters
     constraints = config.get("constraints", {})
@@ -265,7 +266,8 @@ def log_simulation_results(config, config_file, optimal_value, best_bitstring, c
         maxiter if maxiter is not None else "",
         rhobeg if rhobeg is not None else "",
         shots,
-        initial_param_range,
+        gamma_range_str,
+        beta_range_str,
         enforce_constraints,
         min_turbines if min_turbines is not None else "",
         max_turbines if max_turbines is not None else "",
@@ -301,7 +303,8 @@ def log_simulation_results(config, config_file, optimal_value, best_bitstring, c
         "maxiter",
         "rhobeg", 
         "shots",
-        "initial_param_range",
+        "gamma_range",
+        "beta_range", 
         "enforce_constraints",
         "min_turbines",
         "max_turbines", 
@@ -415,6 +418,7 @@ def create_cost_hamiltonian():
     SOLUÇÃO: Reformular para penalizar apenas |11⟩ = turbinas i e j ambas presentes.
     """
     pauli_list = []
+    const_offset = 0.0  # OTIMIZAÇÃO: Acumular termos I para reduzir overhead
     
     # Termos lineares (score): -score[i] * Z[i] 
     for i in range(optimizer.n_positions):
@@ -422,8 +426,8 @@ def create_cost_hamiltonian():
         # |0⟩: Z = +1 → penaliza
         # |1⟩: Z = -1 → recompensa 
         # |any⟩: -I = -1 → recompensa
-        pauli_list.append(("Z", [i], +score[i]/2)) #|0⟩:+score/2, |1⟩:-score/2 , negativo recompensa
-        pauli_list.append(("I", [], -score[i]/2)) #|any⟩: -score/2 recompensa seja 0 ou 1
+        pauli_list.append(("Z", [i], +score[i]/2)) #|0⟩:+score/2, |1⟩:-score/2 , negativo para recompensar
+        const_offset += -score[i]/2 #termo global negativo para recompensar (acumulado)
     
     # OPÇÃO 1: Correção completa para penalizar apenas |11⟩
     # Para cada par de turbinas com wake interference:
@@ -431,20 +435,31 @@ def create_cost_hamiltonian():
     for (i, j), wake_penalty in wake_penalties.items():
         print(i,",",j,":",wake_penalty)
               
-        pauli_list.append(("ZZ", [i, j], wake_penalty/4))  #penaliza 00 e 11   
-        pauli_list.append(("Z", [i], -wake_penalty/4))     # recompensa 1 em i 
-        pauli_list.append(("Z", [j], -wake_penalty/4))     # recompensa 1 em j
-        pauli_list.append(("I", [], wake_penalty/4))  # penaliza em qualquer caso
+        pauli_list.append(("ZZ", [i, j], wake_penalty/4))  # penaliza |00⟩ e |11⟩   
+        pauli_list.append(("Z", [i], -wake_penalty/4))     # penaliza |1*⟩   Z1|0*⟩=+|0*⟩   Z1|1*⟩=-|1*⟩, por issoo sinal de menos
+        pauli_list.append(("Z", [j], -wake_penalty/4))     # penaliza |*1⟩
+        const_offset += wake_penalty/4  # termo global positivo para penalizar (acumulado)
+    
+    # Adicionar único termo I com offset total
+    if abs(const_offset) > 1e-10:  # Evitar termo zero
+        pauli_list.append(("I", [], const_offset))
+        print(f"Termo constante total acumulado: {const_offset:.3f}")
     
  
     return SparsePauliOp.from_sparse_list(pauli_list, num_qubits=optimizer.n_positions)
+
+def params_array_to_dict(params_array, ansatz):
+    """Converte array de parâmetros para dicionário usando ordem do circuito"""
+    circuit_params = list(ansatz.parameters)
+    return {param: params_array[i] for i, param in enumerate(circuit_params)}
 
 def objective_function_with_constraints(params, estimator, ansatz, cost_hamiltonian, simple_sampler):
     """Função objetivo que inclui penalty dinâmica para restrições min/max turbinas"""
     
     # 1. Calcula energia do Hamiltoniano (QAOA normal)
-    # Criar PUB (Primitive Unified Block) para EstimatorV2
-    job = estimator.run([(ansatz, cost_hamiltonian, params)])
+    # CORREÇÃO CRÍTICA: Usar binding por dicionário no Estimator
+    param_dict = params_array_to_dict(params, ansatz)
+    job = estimator.run([(ansatz, cost_hamiltonian, param_dict)])
     result = job.result()
     qaoa_energy = result[0].data.evs  # Valor de expectativa (já é escalar)
     
@@ -626,8 +641,10 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
         from qiskit import transpile
         
         def simple_sampler(ansatz, params):
-            # Criar circuito com parâmetros
-            circuit = ansatz.assign_parameters(params)
+            # CORREÇÃO: Usar binding por dicionário para garantir ordem correta
+            # Converter array para dicionário usando ordem explícita do circuito
+            param_dict = params_array_to_dict(params, ansatz)
+            circuit = ansatz.assign_parameters(param_dict)
             circuit.measure_all()
             
             if use_ibm_quantum:
@@ -674,12 +691,69 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
     optimizer_method = optimizer.config["qaoa"]["optimizer"]
     print(f"Iniciando otimização dos parâmetros usando {optimizer_method}...")
     
-    # Chute inicial: range configurável para exploração
-    param_range_str = optimizer.config["qaoa"].get("initial_param_range", "pi/4")
-    # Interpretar string matemática (pi/4, pi/2, pi, 2*pi, etc.)
-    param_range = eval(param_range_str.replace("pi", "np.pi"))
-    initial_params = np.random.uniform(0, param_range, len(ansatz.parameters))
-    print(f"Parâmetros iniciais: {[f'{p:.3f}' for p in initial_params]}")
+    # Chute inicial: ranges físicos separados para γ e β
+    n_layers = optimizer.config["qaoa"]["layers"]
+    
+    # Ranges separados (backward compatibility)
+    qaoa_config = optimizer.config["qaoa"]
+    
+    # Gamma range (cost parameters)
+    if "gamma_range" in qaoa_config:
+        gamma_range_str = qaoa_config["gamma_range"]
+    else:
+        # Fallback: usar initial_param_range ou padrão físico
+        gamma_range_str = qaoa_config.get("initial_param_range", "2*pi")
+    
+    # Beta range (mixing parameters)  
+    if "beta_range" in qaoa_config:
+        beta_range_str = qaoa_config["beta_range"]
+    else:
+        # Fallback: usar initial_param_range ou padrão físico
+        beta_range_str = qaoa_config.get("initial_param_range", "pi")
+    
+    # Converter strings para valores numéricos
+    gamma_range = eval(gamma_range_str.replace("pi", "np.pi"))
+    beta_range = eval(beta_range_str.replace("pi", "np.pi"))
+    
+    # CORREÇÃO CRÍTICA: Usar binding por dicionário para evitar problemas de ordem
+    # Extrair parâmetros explícitos do ansatz
+    circuit_params = list(ansatz.parameters)
+    
+    # Identificar gammas e betas do circuito
+    gammas = [p for p in circuit_params if 'gamma' in str(p)]
+    betas = [p for p in circuit_params if 'beta' in str(p)]
+    
+    # Ordenar para garantir sequência correta
+    gammas.sort(key=lambda p: int(str(p).split('_')[1]))
+    betas.sort(key=lambda p: int(str(p).split('_')[1])) 
+    
+    print(f"Parâmetros detectados no circuito:")
+    print(f"  • Gammas: {[str(g) for g in gammas]}")
+    print(f"  • Betas: {[str(b) for b in betas]}")
+    
+    print(f"Ranges configurados:")
+    print(f"  • γ range: [0, {gamma_range:.3f}] = [0, {gamma_range/np.pi:.2f}π]")
+    print(f"  • β range: [0, {beta_range:.3f}] = [0, {beta_range/np.pi:.2f}π]")
+    print(f"Valores iniciais (ordem do circuito):")
+    
+    # CORREÇÃO: Gerar initial_params na ordem EXATA do circuito (robusto)
+    initial_params = []
+    for param in circuit_params:
+        if 'gamma' in str(param):
+            # Parâmetro γ: usar gamma_range
+            val = np.random.uniform(0, gamma_range)
+            initial_params.append(val)
+            print(f"    {param}: {val:.3f} (γ range)")
+        elif 'beta' in str(param):
+            # Parâmetro β: usar beta_range  
+            val = np.random.uniform(0, beta_range)
+            initial_params.append(val)
+            print(f"    {param}: {val:.3f} (β range)")
+        else:
+            print(f"    ❌ UNKNOWN PARAM: {param}")
+    
+    initial_params = np.array(initial_params)
+    print(f"Array final (ordem do circuito): {[f'{p:.3f}' for p in initial_params]}")
     
     # Otimizar usando algoritmo configurado
     optimizer_method = optimizer.config["qaoa"]["optimizer"]
@@ -709,7 +783,14 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
     print(f"Valor ótimo encontrado: {result.fun}")
     
     # Executar circuito final para obter distribuição
-    final_circuit = ansatz.assign_parameters(result.x)
+    # CORREÇÃO FINAL: Converter vetor ótimo para dicionário antes de bindar
+    optimal_param_dict = params_array_to_dict(result.x, ansatz)
+    print(f"Parâmetros ótimos encontrados:")
+    for param, val in optimal_param_dict.items():
+        param_type = "γ" if 'gamma' in str(param) else "β"
+        print(f"  {param}: {val:.3f} ({param_type})")
+    
+    final_circuit = ansatz.assign_parameters(optimal_param_dict)
     final_circuit.measure_all()
     
     if use_ibm_quantum:

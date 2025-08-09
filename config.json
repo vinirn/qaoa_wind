@@ -27,8 +27,9 @@
       "rhobeg": 0.5
     },
     "shots": 1024,
-    "initial_param_range": "pi/4",
-    "description": "COBYLA com parâmetros otimizados para QAOA"
+    "gamma_range": "pi",
+    "beta_range": "pi/2",
+    "description": "Exploração moderada para configuração padrão"
   },
   "constraints": {
     "max_turbines": null,

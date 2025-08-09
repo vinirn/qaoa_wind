@@ -9,6 +9,8 @@ import numpy as np
 import json
 import os
 import sys
+import csv
+from datetime import datetime
 from utils import (parse_arguments, list_available_configs, load_config, get_config_file,
                    validate_constraints, evaluate_solution, show_active_penalties, 
                    bitstring_to_grid, display_grid, display_interference_matrix, plot_cost_evolution,
@@ -142,8 +144,200 @@ class QAOATurbineOptimizer:
         
         return penalties
 
+def generate_csv_filename(config):
+    """Gera nome do arquivo CSV baseado na configuração"""
+    # Extrair informações da configuração
+    grid_size = f"{config['grid']['rows']}x{config['grid']['cols']}"
+    
+    # Direção do vento
+    wind_dir = config["wind"]["direction"]
+    if wind_dir == [0, 1]:
+        wind_suffix = "oeste_leste"
+    elif wind_dir == [1, 0]:
+        wind_suffix = "norte_sul"
+    else:
+        wind_suffix = f"dir_{wind_dir[0]}_{wind_dir[1]}"
+    
+    # Modo do score
+    score_mode = config["score"]["mode"]
+    
+    # Restrições
+    constraints = config.get("constraints", {})
+    enforce_constraints = constraints.get("enforce_constraints", False)
+    constraints_suffix = "com_restricoes" if enforce_constraints else "sem_restricoes"
+    
+    # Nome do arquivo
+    filename = f"qaoa_resultados_{grid_size}_{wind_suffix}_{score_mode}_{constraints_suffix}.csv"
+    return filename
 
-
+def log_simulation_results(config, config_file, optimal_value, best_bitstring, cost_history, counts, execution_time):
+    """Registra os resultados da simulação no arquivo CSV apropriado"""
+    
+    # Criar pasta de resultados se não existir
+    results_dir = "resultados_simulacoes"
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
+        print(f"📁 Pasta {results_dir} criada")
+    
+    # Gerar nome do arquivo CSV
+    csv_filename = generate_csv_filename(config)
+    csv_path = os.path.join(results_dir, csv_filename)
+    
+    # Verificar se arquivo existe para decidir se adiciona cabeçalho
+    file_exists = os.path.exists(csv_path)
+    
+    # Extrair parâmetros para logging
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Parâmetros do grid e wind
+    rows = config["grid"]["rows"]
+    cols = config["grid"]["cols"]
+    wind_direction = config["wind"]["direction"]
+    
+    # Wake effects/penalties
+    if "wake_effects" in config:
+        base_penalty = config["wake_effects"]["base_penalty"]
+        distance_decay = config["wake_effects"]["distance_decay"]
+    else:
+        base_penalty = config["penalties"]["max_penalty"]
+        distance_decay = config["penalties"]["decay_factor"]
+    
+    # Score parameters
+    score_config = config["score"]
+    score_mode = score_config["mode"]
+    uniform_value = score_config.get("uniform_value", None) if score_mode == "uniform" else None
+    
+    # QAOA parameters
+    qaoa_config = config["qaoa"]
+    layers = qaoa_config["layers"]
+    optimizer_name = qaoa_config["optimizer"]
+    maxiter = qaoa_config.get("optimizer_options", {}).get("maxiter", None)
+    rhobeg = qaoa_config.get("optimizer_options", {}).get("rhobeg", None)
+    shots = qaoa_config["shots"]
+    initial_param_range = qaoa_config.get("initial_param_range", "pi/4")
+    
+    # Constraints parameters
+    constraints = config.get("constraints", {})
+    enforce_constraints = constraints.get("enforce_constraints", False)
+    min_turbines = constraints.get("min_turbines", None)
+    max_turbines = constraints.get("max_turbines", None)
+    constraint_penalty = constraints.get("constraint_penalty", None)
+    
+    # Solution analysis
+    solution = bitstring_to_grid(best_bitstring)
+    num_turbines = sum(solution)
+    best_count = counts[best_bitstring]
+    best_probability = best_count / sum(counts.values())
+    
+    # Calcular scores
+    optimizer_obj = QAOATurbineOptimizer(config_file)
+    total_score = sum(solution[i] * optimizer_obj.score[i] for i in range(len(solution)))
+    
+    # Penalidades de esteira ativas e contagem de turbinas com penalty
+    total_wake_penalty = 0
+    turbines_with_penalty = set()  # Usar set para evitar duplicatas
+    
+    for (i, j), penalty in optimizer_obj.wake_penalties.items():
+        if solution[i] == 1 and solution[j] == 1:
+            total_wake_penalty += penalty
+            # Apenas turbina downstream (j) sofre efeito da esteira
+            turbines_with_penalty.add(j)
+    
+    num_turbines_with_penalty = len(turbines_with_penalty)
+    
+    # Calcular relação turbinas com penalty / turbinas totais
+    penalty_ratio = num_turbines_with_penalty / num_turbines if num_turbines > 0 else 0
+    
+    net_score = total_score - total_wake_penalty
+    
+    # Preparar linha de dados
+    row_data = [
+        timestamp,
+        config_file,
+        f"{rows}x{cols}",
+        f"{wind_direction[0]}-{wind_direction[1]}",
+        base_penalty,
+        distance_decay,
+        score_mode,
+        uniform_value if uniform_value is not None else "",
+        layers,
+        optimizer_name,
+        maxiter if maxiter is not None else "",
+        rhobeg if rhobeg is not None else "",
+        shots,
+        initial_param_range,
+        enforce_constraints,
+        min_turbines if min_turbines is not None else "",
+        max_turbines if max_turbines is not None else "",
+        constraint_penalty if constraint_penalty is not None else "",
+        best_bitstring,
+        f"{best_probability:.6f}",
+        optimal_value,
+        total_score,
+        total_wake_penalty,
+        net_score,
+        len(cost_history),
+        f"{execution_time:.2f}",
+        min(cost_history) if cost_history else "",
+        max(cost_history) if cost_history else "",
+        cost_history[-1] if cost_history else "",
+        num_turbines,
+        num_turbines_with_penalty,
+        f"{penalty_ratio:.6f}"
+    ]
+    
+    # Cabeçalho do CSV
+    header = [
+        "timestamp",
+        "config_file", 
+        "grid_size",
+        "wind_direction",
+        "base_penalty",
+        "distance_decay", 
+        "score_mode",
+        "uniform_value",
+        "layers",
+        "optimizer",
+        "maxiter",
+        "rhobeg", 
+        "shots",
+        "initial_param_range",
+        "enforce_constraints",
+        "min_turbines",
+        "max_turbines", 
+        "constraint_penalty",
+        "best_bitstring",
+        "best_probability",
+        "optimal_value",
+        "total_score",
+        "wake_penalty",
+        "net_score",
+        "iterations", 
+        "execution_time_s",
+        "min_cost",
+        "max_cost",
+        "final_cost",
+        "num_turbines",
+        "turbines_with_penalty",
+        "penalty_ratio"
+    ]
+    
+    # Escrever no arquivo CSV
+    with open(csv_path, 'a', newline='', encoding='utf-8') as csvfile:
+        writer = csv.writer(csvfile)
+        
+        # Adicionar cabeçalho se arquivo novo
+        if not file_exists:
+            writer.writerow(header)
+            print(f"📝 Novo arquivo CSV criado: {csv_path}")
+        
+        # Adicionar dados
+        writer.writerow(row_data)
+        print(f"✅ Resultados salvos em: {csv_path}")
+        print(f"   • Timestamp: {timestamp}")
+        print(f"   • Configuração: {config_file}")
+        print(f"   • Score líquido: {net_score:.2f}")
+        print(f"   • Turbinas com penalty: {num_turbines_with_penalty}/{num_turbines} ({penalty_ratio:.1%})")
 
 def run_optimization(optimizer):
     """Executa a otimização QAOA"""
@@ -170,7 +364,7 @@ def run_optimization(optimizer):
     try:
         # Obter maxiter das opções do otimizador ou usar padrão
         max_iter = optimizer.config["qaoa"].get("optimizer_options", {}).get("maxiter", 50)
-        counts, optimal_value, cost_history = run_qaoa(p=optimizer.config["qaoa"]["layers"], max_iter=max_iter)
+        counts, optimal_value, cost_history, execution_time = run_qaoa(p=optimizer.config["qaoa"]["layers"], max_iter=max_iter)
         
         # Gerar gráfico de evolução do custo
         plot_cost_evolution(cost_history, config_file)
@@ -207,19 +401,43 @@ positions_coords = optimizer.positions_coords
 wake_penalties = optimizer.wake_penalties
 
 def create_cost_hamiltonian():
-    """Cria o Hamiltoniano de custo - apenas score e wake penalties"""
+    """
+    Cria o Hamiltoniano de custo para QAOA.
+    
+    Objetivo: Maximizar (score - wake_penalties) = Minimizar -(score - wake_penalties)
+    
+    PROBLEMA IDENTIFICADO: O termo ZZ penaliza estados incorretos:
+    - |00⟩: ZZ = +1 → penaliza (sem turbinas, não deveria penalizar)
+    - |01⟩: ZZ = -1 → recompensa (uma turbina, não deveria recompensar) 
+    - |10⟩: ZZ = -1 → recompensa (uma turbina, não deveria recompensar)
+    - |11⟩: ZZ = +1 → penaliza (ambas turbinas, CORRETO)
+    
+    SOLUÇÃO: Reformular para penalizar apenas |11⟩ = turbinas i e j ambas presentes.
+    """
     pauli_list = []
     
     # Termos lineares (score): -score[i] * Z[i] 
     for i in range(optimizer.n_positions):
-        pauli_list.append(("Z", [i], -score[i]))  # Negativo para maximizar
+        print(i,":",score[i])
+        # |0⟩: Z = +1 → penaliza
+        # |1⟩: Z = -1 → recompensa 
+        # |any⟩: -I = -1 → recompensa
+        pauli_list.append(("Z", [i], +score[i]/2)) #|0⟩:+score/2, |1⟩:-score/2 , negativo recompensa
+        pauli_list.append(("I", [], -score[i]/2)) #|any⟩: -score/2 recompensa seja 0 ou 1
     
-    # Termos quadráticos (penalidades de esteira): wake_penalty * Z[i] * Z[j]
+    # OPÇÃO 1: Correção completa para penalizar apenas |11⟩
+    # Para cada par de turbinas com wake interference:
+    
     for (i, j), wake_penalty in wake_penalties.items():
-        pauli_list.append(("ZZ", [i, j], wake_penalty))  # Positivo para penalizar
+        print(i,",",j,":",wake_penalty)
+              
+        pauli_list.append(("ZZ", [i, j], wake_penalty/4))  #penaliza 00 e 11   
+        pauli_list.append(("Z", [i], -wake_penalty/4))     # recompensa 1 em i 
+        pauli_list.append(("Z", [j], -wake_penalty/4))     # recompensa 1 em j
+        pauli_list.append(("I", [], wake_penalty/4))  # penaliza em qualquer caso
     
+ 
     return SparsePauliOp.from_sparse_list(pauli_list, num_qubits=optimizer.n_positions)
-
 
 def objective_function_with_constraints(params, estimator, ansatz, cost_hamiltonian, simple_sampler):
     """Função objetivo que inclui penalty dinâmica para restrições min/max turbinas"""
@@ -286,16 +504,15 @@ def create_qaoa_ansatz(cost_hamiltonian, p):
         # Aplicar operador de custo (problema-dependente)
         # Para cada termo no Hamiltoniano
         for pauli, coeff in cost_hamiltonian.to_list():
-            if 'Z' in pauli:
-                # Aplicar rotações Z baseadas nos termos do Hamiltoniano
-                for i, op in enumerate(pauli):
-                    if op == 'Z':
-                        circuit.rz(2 * gammas[layer] * coeff.real, i)
-            elif 'ZZ' in pauli or pauli.count('Z') == 2:
-                # Termos de dois qubits
+            # CORREÇÃO: Verificar ZZ primeiro, depois Z
+            if pauli.count('Z') == 2:  # Termos ZZ (dois qubits)
                 qubits = [i for i, op in enumerate(pauli) if op == 'Z']
                 if len(qubits) == 2:
                     circuit.rzz(2 * gammas[layer] * coeff.real, qubits[0], qubits[1])
+            elif 'Z' in pauli:  # Termos Z (single qubit)
+                for i, op in enumerate(pauli):
+                    if op == 'Z':
+                        circuit.rz(2 * gammas[layer] * coeff.real, i)
         
         # Aplicar operador de mistura (X rotations)
         for i in range(n_qubits):
@@ -310,6 +527,9 @@ def create_qaoa_ansatz(cost_hamiltonian, p):
 def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
     """Executa o algoritmo QAOA usando APIs modernas"""
     print(f"\nConfigurando QAOA com p={p} camadas...")
+    
+    # Marcar início do tempo de execução
+    start_time = time.time()
     
     # Criar Hamiltoniano e ansatz
     cost_hamiltonian = create_cost_hamiltonian()
@@ -454,8 +674,11 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
     optimizer_method = optimizer.config["qaoa"]["optimizer"]
     print(f"Iniciando otimização dos parâmetros usando {optimizer_method}...")
     
-    # Chute inicial: valores maiores para melhor gradiente
-    initial_params = np.random.uniform(0, np.pi/4, len(ansatz.parameters))
+    # Chute inicial: range configurável para exploração
+    param_range_str = optimizer.config["qaoa"].get("initial_param_range", "pi/4")
+    # Interpretar string matemática (pi/4, pi/2, pi, 2*pi, etc.)
+    param_range = eval(param_range_str.replace("pi", "np.pi"))
+    initial_params = np.random.uniform(0, param_range, len(ansatz.parameters))
     print(f"Parâmetros iniciais: {[f'{p:.3f}' for p in initial_params]}")
     
     # Otimizar usando algoritmo configurado
@@ -513,7 +736,10 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
         job = simulator.run(transpiled_circuit, shots=shots)
         counts = job.result().get_counts()
     
-    return counts, result.fun, cost_history
+    # Calcular tempo total de execução
+    execution_time = time.time() - start_time
+    
+    return counts, result.fun, cost_history, execution_time
 
 
 
@@ -671,12 +897,24 @@ if __name__ == "__main__":
         print(f"\n🔧 QAOA: {p_layers} camadas, {max_iterations} iterações do otimizador")
         
         # Executar QAOA
-        counts, optimal_value, cost_history = run_qaoa(p=p_layers, max_iter=max_iterations, use_ibm_quantum=use_ibm)
+        counts, optimal_value, cost_history, execution_time = run_qaoa(p=p_layers, max_iter=max_iterations, use_ibm_quantum=use_ibm)
         
         # Gerar gráfico de evolução do custo
         plot_cost_evolution(cost_history, optimizer.config.get('grid', {}).get('description', 'qaoa_run'))
         
         analyze_results(counts)
+        
+        # Log dos resultados
+        best_bitstring = max(counts, key=counts.get)
+        log_simulation_results(
+            config=optimizer.config, 
+            config_file=args.config, 
+            optimal_value=optimal_value,
+            best_bitstring=best_bitstring,
+            cost_history=cost_history, 
+            counts=counts,
+            execution_time=execution_time
+        )
         
     except Exception as e:
         print(f"❌ ERRO DETALHADO NA EXECUÇÃO DO QAOA:")

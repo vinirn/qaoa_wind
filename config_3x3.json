@@ -9,7 +9,7 @@
     "description": "Direção do vento: oeste→leste"
   },
   "wake_effects": {
-    "base_penalty": 6.0,
+    "base_penalty": 8.0,
     "distance_decay": 1.0,
     "description": "Penalidade de esteira: base_penalty - (distância × distance_decay)"
   },
@@ -26,6 +26,7 @@
       "rhobeg": 0.7
     },
     "shots": 100,
+    "initial_param_range": "pi/4",
     "description": "Balanceado: precisão vs velocidade para QAOA"
   },
   "constraints": {

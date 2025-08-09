@@ -19,13 +19,14 @@
     "description": "Score constante para todas as posições"
   },
   "qaoa": {
-    "layers": 2,
+    "layers": 1,
     "optimizer": "COBYLA",
     "optimizer_options": {
-      "maxiter": 100,
-      "rhobeg": 0.5
+      "maxiter": 200,
+      "rhobeg": 0.7
     },
-    "shots": 16,
+    "shots": 100,
+    "initial_param_range": "pi/4",
     "description": "Balanceado: precisão vs velocidade para QAOA"
   },
   "constraints": {

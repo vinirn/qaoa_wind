@@ -22,7 +22,8 @@
     "layers": 1,
     "max_iterations": 50,
     "optimizer": "COBYLA", 
-    "shots": 1024
+    "shots": 1024,
+    "initial_param_range": "pi/4"
   },
   "constraints": {
     "max_turbines": null,

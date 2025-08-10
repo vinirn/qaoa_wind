@@ -14,7 +14,11 @@ from datetime import datetime
 from utils import (parse_arguments, list_available_configs, load_config, get_config_file,
                    validate_constraints, evaluate_solution, show_active_penalties, 
                    bitstring_to_grid, display_grid, display_interference_matrix, plot_cost_evolution,
+                   plot_gamma_beta_trajectory, create_grid_visualization,
                    load_ibm_api_key, load_ibm_config, confirm_ibm_execution)
+
+# Controle global simples para gating de plots quando função utilitária é usada
+PLOT_ENABLED = False
 from qiskit.quantum_info import SparsePauliOp
 from qiskit import QuantumCircuit
 from qiskit.circuit import Parameter
@@ -367,12 +371,21 @@ def run_optimization(optimizer):
     try:
         # Obter maxiter das opções do otimizador ou usar padrão
         max_iter = optimizer.config["qaoa"].get("optimizer_options", {}).get("maxiter", 50)
-        counts, optimal_value, cost_history, execution_time = run_qaoa(p=optimizer.config["qaoa"]["layers"], max_iter=max_iter)
+        counts, optimal_value, cost_history, execution_time, param_hist = run_qaoa(p=optimizer.config["qaoa"]["layers"], max_iter=max_iter)
         
-        # Gerar gráfico de evolução do custo
-        plot_cost_evolution(cost_history, config_file)
+        # Gerar gráfico de evolução do custo (condicionado)
+        if PLOT_ENABLED:
+            plot_cost_evolution(cost_history, config_file, rhobeg=param_hist.get('rhobeg'))
         
         analyze_results(counts)
+        
+        # Trajetória γ-β (condicionado)
+        if PLOT_ENABLED:
+            try:
+                from utils import plot_gamma_beta_trajectory as _plot_traj
+                _plot_traj(param_hist.get("gamma_history", []), param_hist.get("beta_history", []), config_file, rhobeg=param_hist.get('rhobeg'))
+            except Exception:
+                pass
         
     except Exception as e:
         print(f"❌ ERRO DETALHADO NA EXECUÇÃO DO QAOA:")
@@ -630,6 +643,11 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
     # Contador para acompanhar iterações e histórico de custos
     iteration_count = [0]  # Lista para permitir modificação dentro da função aninhada
     cost_history = []  # Lista para armazenar histórico de custos
+    # Histórico γ/β por camada (preparado após detectar ordem dos params)
+    gamma_indices = []
+    beta_indices = []
+    gamma_history = None
+    beta_history = None
     
     def cost_function(params):
         """Função de custo com penalty dinâmica para restrições"""
@@ -681,6 +699,16 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
         
         # Armazenar histórico para plotagem
         cost_history.append(cost_value)
+        # Capturar trajetória γ/β por camada nesta avaliação
+        try:
+            for l in range(n_layers):
+                g_idx = gamma_indices[l] if l < len(gamma_indices) else -1
+                b_idx = beta_indices[l] if l < len(beta_indices) else -1
+                if g_idx != -1 and b_idx != -1 and g_idx < len(params) and b_idx < len(params):
+                    gamma_history[l].append(float(params[g_idx]))
+                    beta_history[l].append(float(params[b_idx]))
+        except Exception:
+            pass
         
         # Imprimir progresso da otimização
         print(f"  Iteração {iteration_count[0]:3d}: Custo = {cost_value:8.4f} | Params: [{params_str}]")
@@ -754,6 +782,23 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
     
     initial_params = np.array(initial_params)
     print(f"Array final (ordem do circuito): {[f'{p:.3f}' for p in initial_params]}")
+
+    # Mapear índices de γ_l e β_l na ordem do vetor de parâmetros (ordem do circuito)
+    gamma_indices = [-1] * n_layers
+    beta_indices = [-1] * n_layers
+    for idx, param in enumerate(circuit_params):
+        name = str(param)
+        if 'gamma_' in name:
+            l = int(name.split('_')[1])
+            if 0 <= l < n_layers:
+                gamma_indices[l] = idx
+        elif 'beta_' in name:
+            l = int(name.split('_')[1])
+            if 0 <= l < n_layers:
+                beta_indices[l] = idx
+    # Preparar histórico dos parâmetros
+    gamma_history = [[] for _ in range(n_layers)]
+    beta_history = [[] for _ in range(n_layers)]
     
     # Otimizar usando algoritmo configurado
     optimizer_method = optimizer.config["qaoa"]["optimizer"]
@@ -775,6 +820,11 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
             base_options['maxiter'] = max_iter
     
     print(f"Opções finais do otimizador: {base_options}")
+
+    # Capturar rhobeg efetivo (se aplicável)
+    rhobeg_used = None
+    if optimizer_method.upper() == 'COBYLA':
+        rhobeg_used = base_options.get('rhobeg', None)
     
     result = minimize(cost_function, initial_params, method=optimizer_method, 
                      options=base_options)
@@ -820,7 +870,7 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
     # Calcular tempo total de execução
     execution_time = time.time() - start_time
     
-    return counts, result.fun, cost_history, execution_time
+    return counts, result.fun, cost_history, execution_time, {"gamma_history": gamma_history, "beta_history": beta_history, "rhobeg": rhobeg_used}
 
 
 
@@ -938,6 +988,8 @@ def analyze_results(counts):
 if __name__ == "__main__":
     # Primeiro processar argumentos
     args = parse_arguments()
+    # Ajustar flag global para funções utilitárias
+    PLOT_ENABLED = bool(getattr(args, 'plot', False))
     
     # Se solicitado, listar configurações e sair
     if args.list_configs:
@@ -978,10 +1030,27 @@ if __name__ == "__main__":
         print(f"\n🔧 QAOA: {p_layers} camadas, {max_iterations} iterações do otimizador")
         
         # Executar QAOA
-        counts, optimal_value, cost_history, execution_time = run_qaoa(p=p_layers, max_iter=max_iterations, use_ibm_quantum=use_ibm)
+        counts, optimal_value, cost_history, execution_time, param_hist = run_qaoa(p=p_layers, max_iter=max_iterations, use_ibm_quantum=use_ibm)
         
-        # Gerar gráfico de evolução do custo
-        plot_cost_evolution(cost_history, optimizer.config.get('grid', {}).get('description', 'qaoa_run'))
+        # Gerar gráficos somente se --plot for passado
+        if getattr(args, 'plot', False):
+            cfg_name = optimizer.config.get('grid', {}).get('description', args.config)
+            rhobeg_used = param_hist.get('rhobeg')
+            plot_cost_evolution(cost_history, cfg_name, rhobeg=rhobeg_used)
+            plot_gamma_beta_trajectory(param_hist.get('gamma_history', []), param_hist.get('beta_history', []), cfg_name, rhobeg=rhobeg_used)
+            
+            # Gerar visualização do grid mais provável
+            best_bitstring = max(counts, key=counts.get)
+            best_probability = counts[best_bitstring] / sum(counts.values())
+            solution = bitstring_to_grid(best_bitstring)
+            
+            # Calcular scores para a visualização
+            total_score = sum(solution[i] * optimizer.score[i] for i in range(optimizer.n_positions))
+            wake_penalty = sum(solution[i] * solution[j] * penalty 
+                             for (i, j), penalty in optimizer.wake_penalties.items())
+            
+            create_grid_visualization(solution, optimizer, args.config, 
+                                    best_probability, total_score, wake_penalty)
         
         analyze_results(counts)
         

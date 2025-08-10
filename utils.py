@@ -3,6 +3,7 @@ import os
 import json
 import sys
 import matplotlib.pyplot as plt
+import numpy as np
 from datetime import datetime
 
 def parse_arguments():
@@ -47,6 +48,12 @@ Arquivos de configuração disponíveis:
         '--ibm-quantum',
         action='store_true',
         help='Executa no computador quântico IBM (requer confirmação)'
+    )
+
+    parser.add_argument(
+        '--plot',
+        action='store_true',
+        help='Gera gráficos (evolução do custo e trajetória γ-β) em images/'
     )
     
     return parser.parse_args()
@@ -242,14 +249,17 @@ def display_interference_matrix(optimizer):
     print(f"   • Taxa de interferência: {active_interferences/total_combinations*100:.1f}%")
     print("="*70)
 
-def plot_cost_evolution(cost_history, config_name="config", save_plot=True):
+def plot_cost_evolution(cost_history, config_name="config", save_plot=True, rhobeg=None):
     """Gera gráfico da evolução do custo durante a otimização QAOA"""
     plt.figure(figsize=(10, 6))
     
     iterations = range(1, len(cost_history) + 1)
     plt.plot(iterations, cost_history, 'b-', linewidth=2, marker='o', markersize=4, alpha=0.7)
     
-    plt.title(f'Evolução do Custo - QAOA Otimização\nConfiguração: {config_name}', fontsize=14, fontweight='bold')
+    subtitle = f"Configuração: {config_name}"
+    if rhobeg is not None:
+        subtitle += f" | rhobeg={rhobeg}"
+    plt.title(f'Evolução do Custo - QAOA Otimização\n{subtitle}', fontsize=14, fontweight='bold')
     plt.xlabel('Iteração', fontsize=12)
     plt.ylabel('Valor da Função de Custo', fontsize=12)
     plt.grid(True, alpha=0.3)
@@ -274,17 +284,144 @@ def plot_cost_evolution(cost_history, config_name="config", save_plot=True):
             
         # Gerar nome do arquivo com timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"images/qaoa_optimization_{config_name.replace('.json', '')}_{timestamp}.png"
+        base = config_name.replace('.json', '')
+        if rhobeg is not None:
+            base = f"{base}_rhobeg-{rhobeg}"
+        filename = f"images/qaoa_optimization_{base}_{timestamp}.png"
         plt.savefig(filename, dpi=300, bbox_inches='tight')
         print(f"\n📊 Gráfico salvo como: {filename}")
         
         # Também salvar uma versão simples sem timestamp para fácil visualização
-        simple_filename = f"images/qaoa_latest_{config_name.replace('.json', '')}.png"
+        base_simple = config_name.replace('.json', '')
+        if rhobeg is not None:
+            base_simple = f"{base_simple}_rhobeg-{rhobeg}"
+        simple_filename = f"images/qaoa_latest_{base_simple}.png"
         plt.savefig(simple_filename, dpi=300, bbox_inches='tight')
         print(f"📊 Versão simples salva como: {simple_filename}")
     
     # Não mostrar o plot na tela para evitar problemas em ambientes sem display
     # plt.show()
+    plt.close()
+
+def plot_gamma_beta_trajectory(gamma_history, beta_history, config_name="config", save_plot=True, rhobeg=None):
+    """Plota a trajetória dos parâmetros γ (x) e β (y) ao longo das iterações.
+
+    - gamma_history: lista de listas; gamma_history[l][t] é γ_l na iteração t
+    - beta_history: lista de listas; beta_history[l][t] é β_l na iteração t
+    """
+    if not gamma_history or not beta_history:
+        print("⚠️  Sem histórico de parâmetros para plotar.")
+        return
+
+    p = len(gamma_history)
+    assert p == len(beta_history), "Tamanhos de histórico de γ e β não coincidem"
+
+    plt.figure(figsize=(8, 6))
+
+    # Cores distintas por caminhante
+    colors = plt.cm.tab10.colors if p <= 10 else plt.cm.tab20.colors
+
+    # Coletar todos os valores para determinar os limites dos eixos
+    all_gammas = []
+    all_betas = []
+
+    for l in range(p):
+        xs = gamma_history[l]
+        ys = beta_history[l]
+        if not xs or not ys:
+            continue
+        color = colors[l % len(colors)]
+        plt.plot(xs, ys, '-', color=color, linewidth=2, alpha=0.7, label=f'caminhante {l}')
+        # Marcar início e fim
+        plt.scatter(xs[0], ys[0], color=color, marker='o', s=60, edgecolors='k', linewidths=0.5)
+        plt.scatter(xs[-1], ys[-1], color=color, marker='X', s=80, edgecolors='k', linewidths=0.5)
+
+        # Pequenas setas para indicar direção (a cada ~N passos)
+        if len(xs) > 1:
+            skip = max(1, len(xs)//6)
+            for i in range(0, len(xs)-1, skip):
+                plt.annotate('', xy=(xs[i+1], ys[i+1]), xytext=(xs[i], ys[i]),
+                             arrowprops=dict(arrowstyle='->', color=color, lw=1, alpha=0.6))
+        
+        # Coletar valores para limites dos eixos
+        all_gammas.extend(xs)
+        all_betas.extend(ys)
+
+    # Ajustar limites dos eixos baseados no range dos dados
+    if all_gammas and all_betas:
+        import numpy as np
+        
+        gamma_min, gamma_max = min(all_gammas), max(all_gammas)
+        beta_min, beta_max = min(all_betas), max(all_betas)
+        
+        # Ranges padrão QAOA: γ ∈ [0, 2π], β ∈ [0, π]
+        gamma_default_min, gamma_default_max = 0, 2 * np.pi
+        beta_default_min, beta_default_max = 0, np.pi
+        
+        # Expandir limites se os dados ultrapassarem o range padrão
+        final_gamma_min = min(gamma_min, gamma_default_min)
+        final_gamma_max = max(gamma_max, gamma_default_max)
+        final_beta_min = min(beta_min, beta_default_min)
+        final_beta_max = max(beta_max, beta_default_max)
+        
+        # Adicionar margem de 2% para visualização
+        gamma_range = final_gamma_max - final_gamma_min
+        beta_range = final_beta_max - final_beta_min
+        margin = 0.02
+        
+        plt.xlim(final_gamma_min - margin * gamma_range, final_gamma_max + margin * gamma_range)
+        plt.ylim(final_beta_min - margin * beta_range, final_beta_max + margin * beta_range)
+
+    subtitle = f"Configuração: {config_name}"
+    if rhobeg is not None:
+        subtitle += f" | rhobeg={rhobeg}"
+    plt.title(f'Trajetória dos Parâmetros (γ vs β)\n{subtitle}', fontsize=14, fontweight='bold')
+    plt.xlabel('γ (gamma)', fontsize=12)
+    plt.ylabel('β (beta)', fontsize=12)
+    plt.grid(True, alpha=0.3)
+
+    # Preparar área extra à direita para legendas externas
+    ax = plt.gca()
+    plt.subplots_adjust(right=0.75)
+
+    # Legenda explicativa dos marcadores (início/fim)
+    from matplotlib.lines import Line2D
+    custom_lines = [
+        Line2D([0], [0], marker='o', color='w', markerfacecolor='gray', markeredgecolor='k', markersize=8, linestyle='None'),
+        Line2D([0], [0], marker='X', color='w', markerfacecolor='gray', markeredgecolor='k', markersize=8, linestyle='None'),
+    ]
+
+    # Legenda das camadas (p): fora do plot, canto superior direito externo
+    leg_layers = ax.legend(title='Camadas (p)', loc='upper left', bbox_to_anchor=(1.02, 1.0), borderaxespad=0.)
+    ax.add_artist(leg_layers)
+
+    # Legenda dos marcadores: fora do plot, meio direito externo
+    leg_markers = ax.legend(custom_lines, ['Início', 'Fim'], title='Marcadores', loc='center left', bbox_to_anchor=(1.02, 0.5), borderaxespad=0., fontsize=10)
+
+    # Ajuste final
+    plt.tight_layout()
+
+    if save_plot:
+        # Criar pasta images se não existir
+        if not os.path.exists('images'):
+            os.makedirs('images')
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        base = config_name.replace('.json', '')
+        if rhobeg is not None:
+            base = f"{base}_rhobeg-{rhobeg}"
+        filename = f"images/qaoa_params_traj_{base}_{timestamp}.png"
+        # Incluir legendas externas no bounding box
+        plt.savefig(filename, dpi=300, bbox_inches='tight', bbox_extra_artists=(leg_layers, leg_markers))
+        print(f"📊 Gráfico de trajetória salvo como: {filename}")
+
+        base_simple = config_name.replace('.json', '')
+        if rhobeg is not None:
+            base_simple = f"{base_simple}_rhobeg-{rhobeg}"
+        simple_filename = f"images/qaoa_params_traj_latest_{base_simple}.png"
+        plt.savefig(simple_filename, dpi=300, bbox_inches='tight', bbox_extra_artists=(leg_layers, leg_markers))
+        print(f"📊 Versão simples salva como: {simple_filename}")
+
     plt.close()
 
 def load_ibm_api_key():
@@ -408,4 +545,107 @@ def display_grid(solution, optimizer, title=None):
     # Linha inferior da tabela
     line_bottom = "   └" + "─────┴" * (optimizer.cols - 1) + "─────┘"
     print(line_bottom)
+
+def create_grid_visualization(solution, optimizer, config_file, best_probability=None, total_score=None, wake_penalty=None):
+    """Cria visualização gráfica do grid mais provável e salva na pasta images/"""
+    
+    # Criar pasta images se não existir
+    if not os.path.exists('images'):
+        os.makedirs('images')
+        print("📁 Pasta images/ criada")
+    
+    # Configurar o grid como matriz
+    grid_matrix = np.array(solution).reshape((optimizer.rows, optimizer.cols))
+    
+    # Criar figura
+    fig, ax = plt.subplots(figsize=(max(8, optimizer.cols * 1.5), max(6, optimizer.rows * 1.5)))
+    
+    # Criar colormap personalizado: 0 = branco (vazio), 1 = azul (turbina)
+    colors = ['white', 'steelblue']
+    cmap = plt.matplotlib.colors.ListedColormap(colors)
+    
+    # Plotar o grid
+    im = ax.imshow(grid_matrix, cmap=cmap, vmin=0, vmax=1, aspect='equal')
+    
+    # Adicionar grade
+    ax.set_xticks(np.arange(-0.5, optimizer.cols, 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, optimizer.rows, 1), minor=True)
+    ax.grid(which="minor", color="gray", linestyle='-', linewidth=1)
+    
+    # Configurar labels dos eixos
+    ax.set_xticks(range(optimizer.cols))
+    ax.set_yticks(range(optimizer.rows))
+    ax.set_xticklabels([f'Col {i}' for i in range(optimizer.cols)])
+    ax.set_yticklabels([f'Row {i}' for i in range(optimizer.rows)])
+    
+    # Adicionar números das posições e símbolos
+    for i in range(optimizer.rows):
+        for j in range(optimizer.cols):
+            position = i * optimizer.cols + j
+            if grid_matrix[i, j] == 1:
+                # Turbina instalada
+                ax.text(j, i, f'●\n{position}', ha='center', va='center', 
+                       fontsize=14, fontweight='bold', color='white')
+            else:
+                # Posição vazia (apenas número)
+                ax.text(j, i, f'{position}', ha='center', va='center', 
+                       fontsize=12, color='gray')
+    
+    # Mostrar direção do vento
+    wind_direction = optimizer.wind_direction
+    if wind_direction == (0, 1):
+        wind_text = "Oeste → Leste"
+        # Adicionar seta horizontal
+        ax.annotate('', xy=(optimizer.cols-0.8, -0.3), xytext=(0.2, -0.3),
+                   arrowprops=dict(arrowstyle='->', lw=2, color='red'))
+        ax.text(optimizer.cols/2, -0.5, 'VENTO', ha='center', va='top', 
+               fontsize=10, color='red', fontweight='bold')
+    elif wind_direction == (1, 0):
+        wind_text = "Norte → Sul"
+        # Adicionar seta vertical
+        ax.annotate('', xy=(-0.3, optimizer.rows-0.2), xytext=(-0.3, 0.2),
+                   arrowprops=dict(arrowstyle='->', lw=2, color='red'))
+        ax.text(-0.5, optimizer.rows/2, 'VENTO', ha='right', va='center', 
+               fontsize=10, color='red', fontweight='bold', rotation=90)
+    
+    # Título com informações da simulação
+    title = f'Grid de Turbinas Eólicas {optimizer.rows}x{optimizer.cols}\n'
+    title += f'Direção do Vento: {wind_text}'
+    
+    if best_probability is not None:
+        title += f' | Probabilidade: {best_probability:.1%}'
+    if total_score is not None and wake_penalty is not None:
+        net_score = total_score - wake_penalty
+        title += f'\nScore Total: {total_score:.1f} - Penalidade: {wake_penalty:.1f} = Score Líquido: {net_score:.1f}'
+    
+    ax.set_title(title, fontsize=11, fontweight='bold', pad=15)
+    
+    # Remover ticks menores para limpeza visual
+    ax.tick_params(which="minor", size=0)
+    
+    # Adicionar legenda
+    from matplotlib.patches import Patch
+    legend_elements = [
+        Patch(facecolor='steelblue', label='Turbina Instalada ●'),
+        Patch(facecolor='white', edgecolor='gray', label='Posição Vazia ○')
+    ]
+    ax.legend(handles=legend_elements, loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol=2)
+    
+    # Ajustar layout
+    plt.tight_layout()
+    
+    # Gerar nome do arquivo baseado na configuração
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    config_name = config_file.replace('.json', '').replace('config_', '').replace('config', 'default')
+    num_turbines = sum(solution)
+    
+    filename = f'grid_visualization_{config_name}_{optimizer.rows}x{optimizer.cols}_{num_turbines}turbinas_{timestamp}.png'
+    filepath = os.path.join('images', filename)
+    
+    # Salvar imagem
+    plt.savefig(filepath, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
+    plt.close()  # Fechar figura para liberar memória
+    
+    print(f"🖼️ Visualização do grid salva: {filepath}")
+    return filepath
     

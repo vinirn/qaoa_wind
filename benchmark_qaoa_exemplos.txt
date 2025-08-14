@@ -1,0 +1,181 @@
+EXEMPLOS DE USO DO SCRIPT BENCHMARK_QAOA.SH
+===========================================
+
+FORMATO GERAL:
+./benchmark_qaoa.sh <config_file> <parameter_path> <start_value> <end_value> <step_size> [num_runs_per_value]
+
+===========================================
+1. PARÂMETROS DO OTIMIZADOR COBYLA
+===========================================
+
+# Testar rhobeg (raio inicial da região de confiança)
+./benchmark_qaoa.sh config_3x3.json "qaoa.optimizer_options.rhobeg" 0.1 1.0 0.1
+
+# Testar maxiter (número máximo de iterações)
+./benchmark_qaoa.sh config_3x3.json "qaoa.optimizer_options.maxiter" 25 100 25
+
+# Testar rhobeg com múltiplas execuções por valor
+./benchmark_qaoa.sh config_3x3.json "qaoa.optimizer_options.rhobeg" 0.3 0.9 0.2 5
+
+===========================================
+2. PARÂMETROS QAOA
+===========================================
+
+# Testar número de camadas (layers/p)
+./benchmark_qaoa.sh config_3x3.json "qaoa.layers" 1 5 1
+
+# Testar número de shots
+./benchmark_qaoa.sh config_3x3.json "qaoa.shots" 512 2048 512
+
+# Comparar diferentes otimizadores (requere configurações separadas)
+# Nota: Para testar otimizadores diferentes, crie configs separados pois são strings
+
+===========================================
+3. PARÂMETROS DE WAKE EFFECTS/PENALIDADES
+===========================================
+
+# Testar penalidade base de esteira
+./benchmark_qaoa.sh config_3x3.json "wake_effects.base_penalty" 2.0 12.0 2.0
+
+# Testar fator de decaimento da distância
+./benchmark_qaoa.sh config_3x3.json "wake_effects.distance_decay" 0.5 2.0 0.5
+
+# Testar penalidade base com alta resolução
+./benchmark_qaoa.sh config_3x3.json "wake_effects.base_penalty" 4.0 8.0 0.5
+
+===========================================
+4. PARÂMETROS DE RESTRIÇÕES
+===========================================
+
+# Testar penalidade de violação de restrições
+./benchmark_qaoa.sh config_3x3.json "constraints.constraint_penalty" 5.0 25.0 5.0
+
+# Testar diferentes números mínimos de turbinas
+./benchmark_qaoa.sh config_3x3.json "constraints.min_turbines" 1 4 1
+
+# Testar diferentes números máximos de turbinas
+./benchmark_qaoa.sh config_3x3.json "constraints.max_turbines" 3 6 1
+
+===========================================
+5. PARÂMETROS DE SCORE
+===========================================
+
+# Testar valor uniforme do score (quando mode = "uniform")
+./benchmark_qaoa.sh config_3x3.json "score.uniform_value" 2.0 8.0 1.0
+
+# Nota: Para testar mode="fixed" vs "uniform" vs "random", 
+# crie configurações separadas pois são strings
+
+===========================================
+6. BENCHMARKS EXTENSOS COM MÚLTIPLAS EXECUÇÕES
+===========================================
+
+# Benchmark extenso do rhobeg com 10 execuções por valor
+./benchmark_qaoa.sh config_3x3.json "qaoa.optimizer_options.rhobeg" 0.2 1.0 0.1 10
+
+# Benchmark das camadas QAOA com 5 execuções por valor
+./benchmark_qaoa.sh config_3x3.json "qaoa.layers" 1 4 1 5
+
+# Benchmark da penalidade base com 3 execuções por valor
+./benchmark_qaoa.sh config_3x3.json "wake_effects.base_penalty" 3.0 9.0 1.0 3
+
+===========================================
+7. BENCHMARKS PARA DIFERENTES CONFIGURAÇÕES
+===========================================
+
+# Teste no grid 2x3 padrão
+./benchmark_qaoa.sh config.json "qaoa.optimizer_options.rhobeg" 0.3 0.9 0.2
+
+# Teste no grid 3x3
+./benchmark_qaoa.sh config_3x3.json "qaoa.optimizer_options.rhobeg" 0.3 0.9 0.2
+
+# Teste no grid vertical 4x2
+./benchmark_qaoa.sh config_vertical.json "qaoa.optimizer_options.rhobeg" 0.3 0.9 0.2
+
+# Teste no grid 4x4
+./benchmark_qaoa.sh config_4x4.json "qaoa.optimizer_options.rhobeg" 0.3 0.9 0.2
+
+===========================================
+8. BENCHMARKS DE ALTA RESOLUÇÃO
+===========================================
+
+# Teste fino do rhobeg em região específica
+./benchmark_qaoa.sh config_3x3.json "qaoa.optimizer_options.rhobeg" 0.6 0.8 0.05
+
+# Teste fino da penalidade base
+./benchmark_qaoa.sh config_3x3.json "wake_effects.base_penalty" 5.0 7.0 0.25
+
+# Teste fino do número de shots
+./benchmark_qaoa.sh config_3x3.json "qaoa.shots" 100 1000 100
+
+===========================================
+9. BENCHMARKS LONGOS PARA ESTATÍSTICAS
+===========================================
+
+# Benchmark estatístico do rhobeg (20 execuções por valor)
+./benchmark_qaoa.sh config_3x3.json "qaoa.optimizer_options.rhobeg" 0.4 0.8 0.1 20
+
+# Benchmark estatístico das camadas (15 execuções por valor)
+./benchmark_qaoa.sh config_3x3.json "qaoa.layers" 1 3 1 15
+
+===========================================
+10. ESTUDOS COMPARATIVOS
+===========================================
+
+# Comparar performance com diferentes números de shots
+./benchmark_qaoa.sh config_3x3.json "qaoa.shots" 64 512 64
+
+# Comparar impacto do maxiter na qualidade da solução
+./benchmark_qaoa.sh config_3x3.json "qaoa.optimizer_options.maxiter" 10 50 10
+
+# Estudar sensibilidade à penalidade de restrições
+./benchmark_qaoa.sh config_3x3.json "constraints.constraint_penalty" 1.0 20.0 2.0
+
+===========================================
+DICAS IMPORTANTES:
+===========================================
+
+1. BACKUP AUTOMÁTICO: O script sempre cria backup da configuração original
+
+2. ANÁLISE DOS RESULTADOS: Todos os resultados são salvos automaticamente no CSV:
+   - Abra: resultados_simulacoes/qaoa_resultados_[config]_[parâmetros].csv
+   - Compare as colunas do parâmetro testado vs métricas de performance
+
+3. PARÂMETROS RECOMENDADOS PARA COMEÇAR:
+   - rhobeg: 0.3 a 0.9 (passo 0.1 ou 0.2)
+   - layers: 1 a 4 (passo 1)
+   - maxiter: 25 a 100 (passo 25)
+   - base_penalty: 2.0 a 10.0 (passo 2.0)
+
+4. MÚLTIPLAS EXECUÇÕES: Use para parâmetros críticos (rhobeg, layers)
+   - 3-5 execuções: Teste rápido
+   - 10-15 execuções: Análise robusta
+   - 20+ execuções: Estudo estatístico
+
+5. INTERRUPÇÃO: Use Ctrl+C para interromper. A configuração será restaurada automaticamente.
+
+6. MONITORAMENTO: Acompanhe a pasta resultados_simulacoes/ para ver os dados sendo salvos
+
+===========================================
+MÉTRICAS IMPORTANTES PARA ANÁLISE:
+===========================================
+
+- net_score: Score líquido (objetivo principal)
+- execution_time_s: Tempo de execução
+- best_probability: Probabilidade da melhor solução
+- num_turbines: Número de turbinas na solução
+- penalty_ratio: Proporção de turbinas com interferência
+- iterations: Número de iterações do otimizador
+
+===========================================
+EXEMPLO DE SESSÃO COMPLETA:
+===========================================
+
+# 1. Primeiro, um teste rápido
+./benchmark_qaoa.sh config_3x3.json "qaoa.optimizer_options.rhobeg" 0.5 0.7 0.1
+
+# 2. Depois, um teste mais detalhado na região promissora
+./benchmark_qaoa.sh config_3x3.json "qaoa.optimizer_options.rhobeg" 0.6 0.8 0.05 5
+
+# 3. Finalmente, testar outros parâmetros com o valor ótimo de rhobeg
+./benchmark_qaoa.sh config_3x3.json "qaoa.layers" 1 3 1 3

@@ -55,6 +55,12 @@ Arquivos de configuração disponíveis:
         action='store_true',
         help='Gera gráficos (evolução do custo e trajetória γ-β) em images/'
     )
+
+    parser.add_argument(
+        '--plot-quantum',
+        action='store_true',
+        help='Plota representação do circuito quântico QAOA em images/'
+    )
     
     return parser.parse_args()
 
@@ -648,4 +654,93 @@ def create_grid_visualization(solution, optimizer, config_file, best_probability
     
     print(f"🖼️ Visualização do grid salva: {filepath}")
     return filepath
+
+def plot_quantum_circuit(ansatz, config_file):
+    """
+    Plota o circuito quântico QAOA e salva na pasta images/
+    
+    Args:
+        ansatz: Circuito quântico QAOA
+        config_file: Nome do arquivo de configuração para identificar o plot
+    """
+    try:
+        from qiskit.visualization import circuit_drawer
+        import matplotlib.pyplot as plt
+        
+        # Garantir que a pasta images existe
+        if not os.path.exists('images'):
+            os.makedirs('images')
+            print("📁 Pasta images/ criada")
+        
+        # Configurar o plot
+        fig = plt.figure(figsize=(12, 8))
+        
+        # Desenhar o circuito usando o circuit_drawer do Qiskit
+        # Usar output='mpl' para integração com matplotlib
+        try:
+            circuit_plot = circuit_drawer(
+                ansatz, 
+                output='mpl',
+                style='iqp',  # Estilo IBM Quantum Platform
+                plot_barriers=False,
+                fold=-1,  # Não dobrar o circuito
+                reverse_bits=False
+            )
+            
+            # Adicionar título com informações
+            n_qubits = ansatz.num_qubits
+            n_params = len(ansatz.parameters)
+            layers = len([p for p in ansatz.parameters if 'gamma' in str(p)])
+            
+            config_name = config_file.replace('.json', '').replace('config_', '').replace('config', 'default')
+            title = f'Circuito Quântico QAOA - {config_name.upper()}\n'
+            title += f'{n_qubits} qubits | {layers} camadas | {n_params} parâmetros'
+            
+            plt.suptitle(title, fontsize=14, fontweight='bold', y=0.95)
+            
+            # Adicionar legenda explicativa
+            legend_text = (
+                "H: Hadamard (superposição inicial)\n"
+                "RZ: Rotação Z (operador de custo γ)\n"
+                "RZZ: Rotação ZZ (termos de interação)\n"
+                "RX: Rotação X (operador de mistura β)"
+            )
+            
+            plt.figtext(0.02, 0.02, legend_text, fontsize=9, 
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray", alpha=0.5))
+            
+        except Exception as e:
+            print(f"⚠️  Fallback: Usando representação de texto do circuito (erro no plot: {e})")
+            # Fallback: criar uma visualização de texto simples
+            fig, ax = plt.subplots(figsize=(12, 8))
+            n_qubits = ansatz.num_qubits
+            n_params = len(ansatz.parameters)
+            layers = len([p for p in ansatz.parameters if 'gamma' in str(p)])
+            
+            ax.text(0.5, 0.5, str(ansatz), transform=ax.transAxes, 
+                   fontfamily='monospace', fontsize=8, ha='center', va='center')
+            ax.set_title(f'Circuito QAOA - {config_file}\n{n_qubits} qubits | {layers} camadas | {n_params} parâmetros', fontweight='bold')
+            ax.axis('off')
+        
+        # Gerar nome do arquivo
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        config_name = config_file.replace('.json', '').replace('config_', '').replace('config', 'default')
+        filename = f'quantum_circuit_{config_name}_{n_qubits}qubits_{layers}layers_{timestamp}.png'
+        filepath = os.path.join('images', filename)
+        
+        # Salvar o circuito
+        plt.tight_layout()
+        plt.savefig(filepath, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
+        plt.close()
+        
+        print(f"🎛️ Circuito quântico salvo: {filepath}")
+        return filepath
+        
+    except ImportError as e:
+        print(f"❌ Erro: Biblioteca necessária não encontrada para plotar circuito: {e}")
+        print("   Instale com: pip install qiskit[visualization]")
+        return None
+    except Exception as e:
+        print(f"❌ Erro ao plotar circuito quântico: {e}")
+        return None
     

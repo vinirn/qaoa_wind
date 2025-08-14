@@ -15,7 +15,7 @@ from utils import (parse_arguments, list_available_configs, load_config, get_con
                    validate_constraints, evaluate_solution, show_active_penalties, 
                    bitstring_to_grid, display_grid, display_interference_matrix, plot_cost_evolution,
                    plot_gamma_beta_trajectory, create_grid_visualization,
-                   load_ibm_api_key, load_ibm_config, confirm_ibm_execution)
+                   load_ibm_api_key, load_ibm_config, confirm_ibm_execution, plot_quantum_circuit)
 
 # Controle global simples para gating de plots quando função utilitária é usada
 PLOT_ENABLED = False
@@ -371,7 +371,7 @@ def run_optimization(optimizer):
     try:
         # Obter maxiter das opções do otimizador ou usar padrão
         max_iter = optimizer.config["qaoa"].get("optimizer_options", {}).get("maxiter", 50)
-        counts, optimal_value, cost_history, execution_time, param_hist = run_qaoa(p=optimizer.config["qaoa"]["layers"], max_iter=max_iter)
+        counts, optimal_value, cost_history, execution_time, param_hist = run_qaoa(p=optimizer.config["qaoa"]["layers"], max_iter=max_iter, use_ibm_quantum=False, args=None, config_file=config_file)
         
         # Gerar gráfico de evolução do custo (condicionado)
         if PLOT_ENABLED:
@@ -458,7 +458,6 @@ def create_cost_hamiltonian():
         pauli_list.append(("I", [], const_offset))
         print(f"Termo constante total acumulado: {const_offset:.3f}")
     
- 
     return SparsePauliOp.from_sparse_list(pauli_list, num_qubits=optimizer.n_positions)
 
 def params_array_to_dict(params_array, ansatz):
@@ -532,6 +531,8 @@ def create_qaoa_ansatz(cost_hamiltonian, p):
         # Aplicar operador de custo (problema-dependente)
         # Para cada termo no Hamiltoniano
         for pauli, coeff in cost_hamiltonian.to_list():
+            print(pauli)
+            print(coeff)
             # CORREÇÃO: Verificar ZZ primeiro, depois Z
             if pauli.count('Z') == 2:  # Termos ZZ (dois qubits)
                 qubits = [i for i, op in enumerate(pauli) if op == 'Z']
@@ -552,7 +553,7 @@ def create_qaoa_ansatz(cost_hamiltonian, p):
 
 
 
-def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
+def run_qaoa(p, max_iter=50, use_ibm_quantum=False, args=None, config_file=None):
     """Executa o algoritmo QAOA usando APIs modernas"""
     print(f"\nConfigurando QAOA com p={p} camadas...")
     
@@ -564,6 +565,10 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False):
     ansatz = create_qaoa_ansatz(cost_hamiltonian, p)
     
     print(f"Ansatz criado com {ansatz.num_qubits} qubits e {len(ansatz.parameters)} parâmetros")
+    
+    # Plotar circuito quântico se solicitado
+    if args and getattr(args, 'plot_quantum', False):
+        plot_quantum_circuit(ansatz, config_file or 'config.json')
     
     # Configurar EstimatorV2 baseado no modo
     shots = optimizer.config.get("qaoa", {}).get("shots", 1024)
@@ -1030,7 +1035,7 @@ if __name__ == "__main__":
         print(f"\n🔧 QAOA: {p_layers} camadas, {max_iterations} iterações do otimizador")
         
         # Executar QAOA
-        counts, optimal_value, cost_history, execution_time, param_hist = run_qaoa(p=p_layers, max_iter=max_iterations, use_ibm_quantum=use_ibm)
+        counts, optimal_value, cost_history, execution_time, param_hist = run_qaoa(p=p_layers, max_iter=max_iterations, use_ibm_quantum=use_ibm, args=args, config_file=args.config)
         
         # Gerar gráficos somente se --plot for passado
         if getattr(args, 'plot', False):

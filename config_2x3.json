@@ -1,0 +1,44 @@
+{
+  "grid": {
+    "rows": 2,
+    "cols": 3,
+    "description": "Grid 2x3"
+  },
+  "wind": {
+    "direction": [0, 1],
+    "description": "Direção do vento: oeste→leste"
+  },
+  "wake_effects": {
+    "base_penalty": 8.0,
+    "distance_decay": 1.0,
+    "description": "Penalidade de esteira: base_penalty - (distância × distance_decay)"
+  },
+  "score": {
+    "mode": "uniform",
+    "uniform_value": 5,
+    "description": "Score constante para todas as posições"
+  },
+  "qaoa": {
+    "layers": 2,
+    "optimizer": "COBYLA",
+    "optimizer_options": {
+      "maxiter": 50,
+      "rhobeg": 0.7
+    },
+    "shots": 100,
+    "gamma_range": "pi/2",
+    "beta_range": "pi/4", 
+    "description": "Exploração conservadora para teste rápido"
+  },
+  "constraints": {
+    "enforce_constraints": false,
+    "min_turbines": 1,
+    "max_turbines": 6,
+    "constraint_penalty": 10.0,
+    "description": "sem restrições"
+  },
+  "display": {
+    "show_interference_matrix": false,
+    "description": "Controla a exibição da matriz completa de interferências"
+  }
+}

@@ -78,10 +78,15 @@ BACKUP_FILE="${CONFIG_FILE}.backup_$(date +%Y%m%d_%H%M%S)"
 cp "$CONFIG_FILE" "$BACKUP_FILE"
 echo "💾 Backup criado: $BACKUP_FILE"
 
-# Função para restaurar configuração original
+# Função para restaurar configuração original (idempotente) e limpar backup
 restore_config() {
-    echo "🔄 Restaurando configuração original..."
-    cp "$BACKUP_FILE" "$CONFIG_FILE"
+    # Só restaura/limpa se o backup existir
+    if [ -f "$BACKUP_FILE" ]; then
+        echo "🔄 Restaurando configuração original..."
+        cp "$BACKUP_FILE" "$CONFIG_FILE"
+        # Remover backup após a restauração
+        rm -f "$BACKUP_FILE"
+    fi
 }
 
 # Função para atualizar parâmetro no JSON usando Python

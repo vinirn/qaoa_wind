@@ -9,8 +9,8 @@
     "description": "Direção do vento: oeste→leste"
   },
   "wake_effects": {
-    "base_penalty": 16.0,
-    "distance_decay": 1.0,
+    "base_penalty": 12.0,
+    "distance_decay": 4.0,
     "description": "Penalidade de esteira: base_penalty - (distância × distance_decay)"
   },
   "score": {
@@ -23,9 +23,9 @@
     "optimizer": "COBYLA",
     "optimizer_options": {
       "maxiter": 400,
-      "rhobeg": 0.5
+      "rhobeg": 0.9
     },
-    "shots": 1024,
+    "shots": 100,
     "gamma_range": "2*pi",
     "beta_range": "pi",
     "description": "Ranges físicos: gamma [0,2π] para custo, beta [0,π] para mistura"

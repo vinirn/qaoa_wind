@@ -1,0 +1,17 @@
+{
+  "description": "Configuração para renderização de grid 3x3",
+  "images": {
+    "terreno": "terreno1_512x512.png",
+    "turbina": "turbina1_512x512.png",
+    "output": "saida_config3x3.png"
+  },
+  "size": [512, 512],
+  "terreno_center": [240, 240],
+  "turbina_base": [250, 380],
+  "positioning": {
+    "shift_x": 80.0,
+    "shift_y": 60.0,
+    "shift_row_x": 40.0,
+    "shift_row_y": 0.0
+  }
+}

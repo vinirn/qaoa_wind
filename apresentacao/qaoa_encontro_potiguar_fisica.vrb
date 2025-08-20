@@ -1,0 +1,15 @@
+\frametitle{Como executar}
+\small
+\begin{lstlisting}[language=bash]
+# Ambiente e dependencias
+python3 -m venv qiskit_env && source qiskit_env/bin/activate
+pip install -r requirements.txt
+
+# Execucao com configuracao padrao
+./run_qaoa.sh
+
+# Outros cenarios
+./run_qaoa.sh config_3x3.json
+python qaoa_turbinas.py -c config_4x4.json
+python qaoa_turbinas.py --list-configs
+\end{lstlisting}

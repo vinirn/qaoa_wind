@@ -531,8 +531,8 @@ def create_qaoa_ansatz(cost_hamiltonian, p):
         # Aplicar operador de custo (problema-dependente)
         # Para cada termo no Hamiltoniano
         for pauli, coeff in cost_hamiltonian.to_list():
-            print(pauli)
-            print(coeff)
+            #print(pauli)
+            #print(coeff)
             # CORREÇÃO: Verificar ZZ primeiro, depois Z
             if pauli.count('Z') == 2:  # Termos ZZ (dois qubits)
                 qubits = [i for i, op in enumerate(pauli) if op == 'Z']

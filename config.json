@@ -41,5 +41,9 @@
   "display": {
     "show_interference_matrix": true,
     "description": "Controla a exibição da matriz completa de interferências"
+  },
+  "aer": {
+    "max_parallel_threads": null,
+    "description": "Número de núcleos vCPU para o simulador AER. null = usar todos disponíveis"
   }
 }

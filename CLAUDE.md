@@ -42,6 +42,25 @@ The system is fully configurable via JSON files:
 - **Penalties**: max penalty and decay factor
 - **QAOA settings**: layers, iterations, optimizer
 - **Constraints**: min/max number of turbines
+- **AER simulator**: max_parallel_threads for CPU core control
+
+#### AER Simulator Performance Tuning
+
+Control the number of CPU cores used by the AER simulator:
+
+```json
+{
+  "aer": {
+    "max_parallel_threads": 4,
+    "description": "Number of CPU cores for AER simulator. null = use all available"
+  }
+}
+```
+
+- **max_parallel_threads**: Integer specifying number of cores (e.g., 1, 2, 4, 8)
+- **null value**: Uses all available CPU cores automatically
+- **Performance impact**: More cores = faster simulation for large circuits
+- **Memory consideration**: More cores may require more RAM
 
 ## Dependencies
 

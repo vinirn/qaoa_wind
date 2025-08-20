@@ -40,5 +40,9 @@
   "display": {
     "show_interference_matrix": false,
     "description": "Controla a exibição da matriz completa de interferências"
+  },
+  "aer": {
+    "max_parallel_threads": 4,
+    "description": "Usar 4 núcleos CPU para simulação AER"
   }
 }

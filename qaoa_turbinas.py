@@ -622,7 +622,16 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False, args=None, config_file=None)
         # Modo simulação local
         estimator = EstimatorV2()
         estimator.options.default_shots = shots
-        print(f"🖥️  Usando simulação local com {shots} shots por iteração")
+        
+        # Configurar número de threads do AER se especificado
+        aer_config = optimizer.config.get("aer", {})
+        max_threads = aer_config.get("max_parallel_threads", None)
+        
+        if max_threads is not None:
+            estimator.options.backend_options = {"max_parallel_threads": max_threads}
+            print(f"🖥️  Usando simulação local com {shots} shots e {max_threads} threads")
+        else:
+            print(f"🖥️  Usando simulação local com {shots} shots (threads automático)")
     
     # Para IBM Quantum, usar transpilação manual recomendada pela IBM
     if use_ibm_quantum:
@@ -682,8 +691,15 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False, args=None, config_file=None)
                 result = job.result()
                 counts = result[0].data.meas.get_counts()
             else:
-                # Simular localmente
-                simulator = AerSimulator()
+                # Simular localmente com configuração de threads
+                aer_config = optimizer.config.get("aer", {})
+                max_threads = aer_config.get("max_parallel_threads", None)
+                
+                if max_threads is not None:
+                    simulator = AerSimulator(max_parallel_threads=max_threads)
+                else:
+                    simulator = AerSimulator()
+                    
                 transpiled = transpile(circuit, simulator)
                 job = simulator.run(transpiled, shots=shots)
                 counts = job.result().get_counts()
@@ -867,7 +883,15 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False, args=None, config_file=None)
         from qiskit_aer import AerSimulator
         from qiskit import transpile
         
-        simulator = AerSimulator()
+        # Configurar número de threads do AER se especificado
+        aer_config = optimizer.config.get("aer", {})
+        max_threads = aer_config.get("max_parallel_threads", None)
+        
+        if max_threads is not None:
+            simulator = AerSimulator(max_parallel_threads=max_threads)
+        else:
+            simulator = AerSimulator()
+            
         transpiled_circuit = transpile(final_circuit, simulator)
         job = simulator.run(transpiled_circuit, shots=shots)
         counts = job.result().get_counts()

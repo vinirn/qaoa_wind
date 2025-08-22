@@ -9,28 +9,36 @@ from PIL import Image
 import argparse
 
 def load_positions_from_csv(csv_path):
-    """Carrega posições das turbinas de um arquivo CSV (matriz de 0s e 1s) com transposição e flip vertical"""
+    """Carrega posições/intenções das turbinas de um arquivo CSV com transposição e flip vertical.
+
+    - Células com valor > 0 indicam posição de turbina.
+    - Valores no intervalo (0,1] são tratados como opacidade (1 = 100%).
+    - Retorna lista de tuplas (row, col, opacity), além de cols e rows detectados.
+    """
     positions = []
     rows = 0
     cols = 0
-    
+
     with open(csv_path, 'r') as f:
         reader = csv.reader(f)
         for row_idx, row in enumerate(reader):
             rows = row_idx + 1
             if row_idx == 0:
                 cols = len(row)  # Define cols based on first row
-            
+
             for col_idx, cell in enumerate(row):
                 try:
-                    if int(cell) == 1:
-                        # Transposta: troca row e col -> (col_idx, row_idx)
-                        # Depois flip vertical: nova_linha = cols - 1 - col_idx
-                        flipped_row = cols - 1 - col_idx
-                        positions.append((flipped_row, row_idx))
+                    val = float(cell)
                 except ValueError:
-                    continue  # Skip invalid cells
-    
+                    continue  # Ignora células inválidas
+
+                if val > 0:
+                    # Transposta: troca row e col -> (col_idx, row_idx)
+                    # Depois flip vertical: nova_linha = cols - 1 - col_idx
+                    flipped_row = cols - 1 - col_idx
+                    opacity = max(0.0, min(1.0, val))  # clamp para [0,1]
+                    positions.append((flipped_row, row_idx, opacity))
+
     print(f"CSV carregado com transposição e flip vertical: {rows}x{cols} -> {cols}x{rows}")
     return positions, cols, rows  # Retorna cols, rows trocados também
 
@@ -116,7 +124,13 @@ def create_tiling(terreno_path, turbina_path, positions, output_path,
             print(f"Terreno ({row},{col}) -> pixel({terreno_x},{terreno_y})")
     
     # Depois, posiciona turbinas centralizadas nos blocos de terreno correspondentes
-    for row, col in positions:
+    for pos in positions:
+        # Suporta tanto (row, col) quanto (row, col, opacity)
+        if len(pos) == 3:
+            row, col, opacity = pos
+        else:
+            row, col = pos
+            opacity = 1.0
         # Usa EXATAMENTE a mesma lógica dos terrenos para calcular o centro
         center_x = terreno_center[0] + col * shift_x + row * shift_row_x
         center_y = terreno_center[1] + col * shift_y + row * shift_row_y
@@ -129,9 +143,18 @@ def create_tiling(terreno_path, turbina_path, positions, output_path,
         turbina_x = terreno_x_calc + turbina_base[0]
         turbina_y = terreno_y_calc + turbina_base[1]
         
-        # Cola a turbina
-        result.paste(turbina, (int(turbina_x), int(turbina_y)), turbina)
-        print(f"Turbina ({row},{col}) -> pixel({turbina_x},{turbina_y}) [centralizada no terreno]")
+        # Cola a turbina com opacidade (se fornecida)
+        if opacity >= 1.0:
+            result.paste(turbina, (int(turbina_x), int(turbina_y)), turbina)
+        else:
+            # Ajusta alpha global da turbina sem alterar posicionamento
+            t_copy = turbina.copy().convert("RGBA")
+            r, g, b, a = t_copy.split()
+            # Escala o canal alpha pelo fator de opacidade
+            a = a.point(lambda px: int(px * opacity))
+            t_copy.putalpha(a)
+            result.paste(t_copy, (int(turbina_x), int(turbina_y)), t_copy)
+        print(f"Turbina ({row},{col}) -> pixel({turbina_x},{turbina_y}) [centralizada no terreno, opacidade={opacity:.2f}]")
     
     # Gera nome do arquivo baseado na configuração do grid
     if output_path == "saida_config.png":  # Nome padrão

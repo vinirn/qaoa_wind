@@ -24,13 +24,23 @@ TERRENO=$(jq -r '.images.terreno' "$CONFIG_FILE")
 TURBINA=$(jq -r '.images.turbina' "$CONFIG_FILE")
 CSV=$(jq -r '.csv_config' "$CONFIG_FILE")
 
-# Gera nome do arquivo de saída baseado no CSV
-if [[ "$CSV" =~ config([0-9]+)x([0-9]+)\.csv ]]; then
-    GRID_SIZE="${BASH_REMATCH[1]}x${BASH_REMATCH[2]}"
-    OUTPUT="grid_${GRID_SIZE}_$(date +%Y%m%d_%H%M%S).png"
+# Gera nome do arquivo de saída automaticamente a partir do CSV
+# Lê número de linhas (ROWS) e colunas (COLS) do arquivo CSV
+ROWS=$(awk 'NF{c++} END{print c+0}' "$CSV")
+COLS=$(awk -F',' 'NR==1{print NF+0}' "$CSV")
+
+# Diretório de saída
+OUTPUT_DIR="grids_gerados"
+mkdir -p "$OUTPUT_DIR"
+
+if [[ "$ROWS" -gt 0 && "$COLS" -gt 0 ]]; then
+    GRID_SIZE="${COLS}x${ROWS}"
+    OUTPUT_BASENAME="grid_${GRID_SIZE}_$(date +%Y%m%d_%H%M%S).png"
+    OUTPUT="$OUTPUT_DIR/$OUTPUT_BASENAME"
 else
-    # Fallback para nome do JSON ou nome padrão
-    OUTPUT=$(jq -r '.images.output // "saida_config.png"' "$CONFIG_FILE")
+    # Fallback seguro caso CSV esteja vazio ou inválido
+    OUTPUT_BASENAME="grid_$(date +%Y%m%d_%H%M%S).png"
+    OUTPUT="$OUTPUT_DIR/$OUTPUT_BASENAME"
 fi
 
 # Tamanho será calculado automaticamente pelo render_terreno.py
@@ -76,7 +86,7 @@ echo "🔧 Configurações carregadas de $CONFIG_FILE:"
 echo "   • Terreno: $TERRENO"
 echo "   • Turbina: $TURBINA"  
 echo "   • Config: $CSV"
-echo "   • Output: $OUTPUT"
+echo "   • Output: $OUTPUT (gerado automaticamente)"
 echo "   • Centro terreno: $TERRENO_CENTER"
 echo "   • Base turbina: $TURBINA_BASE"
 echo "   • Shifts: x=$SHIFT_X, y=$SHIFT_Y, row_x=$SHIFT_ROW_X, row_y=$SHIFT_ROW_Y"

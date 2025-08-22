@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2024.3.17)  12 AUG 2025 22:16
+This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2024.3.17)  22 AUG 2025 18:13
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1199,76 +1199,66 @@ Overfull \hbox (11.80309pt too wide) in paragraph at lines 316--316
 ] [14
 
 ]
-<../images//grid_visualization_default_2x3_3turbinas_20250810_144135.png, id=14
-6, 570.6921pt x 450.483pt>
+<grid_4x4_inicial.png, id=145, 1444.39626pt x 1204.5pt>
+File: grid_4x4_inicial.png Graphic file (type png)
+<use grid_4x4_inicial.png>
+Package pdftex.def Info: grid_4x4_inicial.png  used on input line 370.
+(pdftex.def)             Requested size: 169.01036pt x 140.93144pt.
+
+Overfull \vbox (1.54784pt too high) detected at line 370
+ []
+
+[15
+
+ <./grid_4x4_inicial.png>]
+<../images//grid_visualization_default_2x3_3turbinas_20250810_144135.png, id=15
+4, 570.6921pt x 450.483pt>
 File: ../images//grid_visualization_default_2x3_3turbinas_20250810_144135.png G
 raphic file (type png)
 <use ../images//grid_visualization_default_2x3_3turbinas_20250810_144135.png>
 Package pdftex.def Info: ../images//grid_visualization_default_2x3_3turbinas_20
-250810_144135.png  used on input line 358.
-(pdftex.def)             Requested size: 159.79204pt x 126.13437pt.
-<../images//grid_visualization_default_2x3_3turbinas_20250810_144138.png, id=14
-8, 570.6921pt x 450.483pt>
+250810_144135.png  used on input line 386.
+(pdftex.def)             Requested size: 138.2795pt x 109.14919pt.
+<../images//grid_visualization_default_2x3_3turbinas_20250810_144138.png, id=15
+5, 570.6921pt x 450.483pt>
 File: ../images//grid_visualization_default_2x3_3turbinas_20250810_144138.png G
 raphic file (type png)
 <use ../images//grid_visualization_default_2x3_3turbinas_20250810_144138.png>
 Package pdftex.def Info: ../images//grid_visualization_default_2x3_3turbinas_20
-250810_144138.png  used on input line 358.
+250810_144138.png  used on input line 386.
 (pdftex.def)             Requested size: 147.49782pt x 116.42856pt.
- [15
+ [16
 
  <../images//grid_visualization_default_2x3_3turbinas_20250810_144135.png> <../
 images//grid_visualization_default_2x3_3turbinas_20250810_144138.png>]
-<../images//grid_visualization_4x4_4x4_8turbinas_20250810_124433.png, id=155, 3
+<../images//grid_visualization_4x4_4x4_8turbinas_20250810_124433.png, id=163, 3
 88.5717pt x 424.9476pt>
 File: ../images//grid_visualization_4x4_4x4_8turbinas_20250810_124433.png Graph
 ic file (type png)
 <use ../images//grid_visualization_4x4_4x4_8turbinas_20250810_124433.png>
 Package pdftex.def Info: ../images//grid_visualization_4x4_4x4_8turbinas_202508
-10_124433.png  used on input line 366.
+10_124433.png  used on input line 394.
 (pdftex.def)             Requested size: 239.68571pt x 262.12904pt.
 
-Overfull \vbox (42.33624pt too high) detected at line 366
+Overfull \vbox (42.33624pt too high) detected at line 394
  []
 
-[16
-
- <../images//grid_visualization_4x4_4x4_8turbinas_20250810_124433.png>]
 [17
 
-] [18
+ <../images//grid_visualization_4x4_4x4_8turbinas_20250810_124433.png>]
+[18
 
 ] [19
 
-]
-\openout4 = `qaoa_encontro_potiguar_fisica.vrb'.
-
- (./qaoa_encontro_potiguar_fisica.vrb
-(/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty
-File: lstlang1.sty 2020/03/24 1.8d listings language file
-)
-(/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty
-File: lstlang1.sty 2020/03/24 1.8d listings language file
-)
-LaTeX Font Info:    Trying to load font information for TS1+lmss on input line 
-5.
-
-(/usr/share/texmf/tex/latex/lm/ts1lmss.fd
-File: ts1lmss.fd 2009/10/30 v1.6 Font defs for Latin Modern
-)
-Overfull \hbox (52.71379pt too wide) in paragraph at lines 5--6
-[][][][][][][][][][][][][][][][][][][][] 
- []
-
-) [20
+] [20
 
 ] [21
 
 ]
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <9> on input line 437.
+(Font)              <9> on input line 448.
 LaTeX Font Info:    Font shape `T1/lmss/m/it' in size <9> not available
-(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 437.
+(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 448.
  [22
 
 ] [23
@@ -1289,34 +1279,34 @@ hanged.
 (rerunfilecheck)             Checksum: 070045EE3A7F9DFC29499FF1811FB027;948.
  ) 
 Here is how much of TeX's memory you used:
- 28748 strings out of 480154
- 559927 string characters out of 5893788
- 1020105 words of memory out of 5000000
- 46004 multiletter control sequences out of 15000+600000
- 580157 words of font info for 106 fonts, out of 8000000 for 9000
+ 28628 strings out of 480154
+ 558252 string characters out of 5893788
+ 1016084 words of memory out of 5000000
+ 45893 multiletter control sequences out of 15000+600000
+ 577019 words of font info for 104 fonts, out of 8000000 for 9000
  61 hyphenation exceptions out of 8191
  128i,14n,122p,433b,1466s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/share/texmf/fonts/enc/dvips/lm/lm-ec.enc}{/usr/share/texmf/fonts/enc/dv
-ips/lm/lm-ts1.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm-rm.enc}{/usr/share/te
-xmf/fonts/enc/dvips/lm/lm-mathit.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm-ma
-thsy.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm-mathex.enc}</usr/share/texlive
-/texmf-dist/fonts/type1/public/amsfonts/latxfont/lcircle1.pfb></usr/share/texmf
-/fonts/type1/public/lm/lmex10.pfb></usr/share/texmf/fonts/type1/public/lm/lmmi1
-0.pfb></usr/share/texmf/fonts/type1/public/lm/lmmi7.pfb></usr/share/texmf/fonts
-/type1/public/lm/lmr10.pfb></usr/share/texmf/fonts/type1/public/lm/lmss10.pfb><
-/usr/share/texmf/fonts/type1/public/lm/lmss12.pfb></usr/share/texmf/fonts/type1
-/public/lm/lmss8.pfb></usr/share/texmf/fonts/type1/public/lm/lmss9.pfb></usr/sh
-are/texmf/fonts/type1/public/lm/lmssbx10.pfb></usr/share/texmf/fonts/type1/publ
-ic/lm/lmsso10.pfb></usr/share/texmf/fonts/type1/public/lm/lmsso12.pfb></usr/sha
-re/texmf/fonts/type1/public/lm/lmsso8.pfb></usr/share/texmf/fonts/type1/public/
-lm/lmsy10.pfb></usr/share/texmf/fonts/type1/public/lm/lmsy7.pfb></usr/share/tex
-mf/fonts/type1/public/lm/lmtt10.pfb></usr/share/texmf/fonts/type1/public/lm/lmt
-t9.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msam1
-0.pfb>
-Output written on qaoa_encontro_potiguar_fisica.pdf (23 pages, 651138 bytes).
+ips/lm/lm-mathit.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm-mathsy.enc}{/usr/s
+hare/texmf/fonts/enc/dvips/lm/lm-rm.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm
+-mathex.enc}</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/latxfont
+/lcircle1.pfb></usr/share/texmf/fonts/type1/public/lm/lmex10.pfb></usr/share/te
+xmf/fonts/type1/public/lm/lmmi10.pfb></usr/share/texmf/fonts/type1/public/lm/lm
+mi7.pfb></usr/share/texmf/fonts/type1/public/lm/lmmi8.pfb></usr/share/texmf/fon
+ts/type1/public/lm/lmr10.pfb></usr/share/texmf/fonts/type1/public/lm/lmss10.pfb
+></usr/share/texmf/fonts/type1/public/lm/lmss12.pfb></usr/share/texmf/fonts/typ
+e1/public/lm/lmss8.pfb></usr/share/texmf/fonts/type1/public/lm/lmss9.pfb></usr/
+share/texmf/fonts/type1/public/lm/lmssbx10.pfb></usr/share/texmf/fonts/type1/pu
+blic/lm/lmsso10.pfb></usr/share/texmf/fonts/type1/public/lm/lmsso12.pfb></usr/s
+hare/texmf/fonts/type1/public/lm/lmsso8.pfb></usr/share/texmf/fonts/type1/publi
+c/lm/lmsy10.pfb></usr/share/texmf/fonts/type1/public/lm/lmsy7.pfb></usr/share/t
+exmf/fonts/type1/public/lm/lmsy8.pfb></usr/share/texmf/fonts/type1/public/lm/lm
+tt10.pfb></usr/share/texmf/fonts/type1/public/lm/lmtt9.pfb></usr/share/texlive/
+texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb>
+Output written on qaoa_encontro_potiguar_fisica.pdf (23 pages, 1617141 bytes).
 PDF statistics:
- 303 PDF objects out of 1000 (max. 8388607)
- 222 compressed objects within 3 object streams
+ 311 PDF objects out of 1000 (max. 8388607)
+ 225 compressed objects within 3 object streams
  54 named destinations out of 1000 (max. 500000)
- 119 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 124 words of extra memory for PDF output out of 10000 (max. 10000000)
 

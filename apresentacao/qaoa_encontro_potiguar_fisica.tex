@@ -341,9 +341,37 @@ def create_cost_hamiltonian():
 % ------------------------------------------------------------------
 \section{Resultados}
 
+% Slide de configuração inicial movido para antes dos layouts
+\begin{frame}{Configuração inicial (superposição no QAOA)}
+  \begin{columns}
+    \begin{column}{0.45\textwidth}
+      \begin{itemize}
+        \item Todas as soluções possíveis em \textbf{superposição} uniforme.
+        \item Cada posição do grid é mapeada a um qubit.
+        \item $n$ qubits podem representar $2^n$ estados.
+        \item Qubit de cada posição $i$: \[
+        |+\rangle = \frac{1}{\sqrt{2}}|0\rangle + \frac{1}{\sqrt{2}}|1\rangle
+        \]
+        \item Estado inicial do sistema:
+        \[
+        \begin{aligned}
+        |\psi_0\rangle &= |+\rangle^{\otimes n} \\
+                       &= \frac{1}{\sqrt{2^n}} \sum_{x \in \{0,1\}^n} |x\rangle
+        \end{aligned}
+        \]
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.55\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{grid_4x4_inicial.png}\\[2pt]
+      \small Estado inicial em superposição (4x4).
+    \end{column}
+  \end{columns}
+\end{frame}
+
 \begin{frame}{Layouts (2x3) e exemplo}
   \begin{columns}
-    \begin{column}{0.52\textwidth}
+    \begin{column}{0.45\textwidth}
       \centering
       % Substitua pelo arquivo mais recente gerado em images/
       \includegraphics[width=\linewidth]{grid_visualization_default_2x3_3turbinas_20250810_144135.png}
@@ -397,23 +425,6 @@ def create_cost_hamiltonian():
 % 6) Demonstração rápida (CLI)
 % ------------------------------------------------------------------
 \section{Demonstração}
-
-\begin{frame}[fragile]{Como executar}
-\small
-\begin{lstlisting}[language=bash]
-# Ambiente e dependencias
-python3 -m venv qiskit_env && source qiskit_env/bin/activate
-pip install -r requirements.txt
-
-# Execucao com configuracao padrao
-./run_qaoa.sh
-
-# Outros cenarios
-./run_qaoa.sh config_3x3.json
-python qaoa_turbinas.py -c config_4x4.json
-python qaoa_turbinas.py --list-configs
-\end{lstlisting}
-\end{frame}
 
 % ------------------------------------------------------------------
 % 7) Agradecimentos e Referências

@@ -5,13 +5,14 @@
     "turbina": "turbina1_512x512.png",
     "output": "saida_config3x3.png"
   },
-  "size": [512, 512],
+  "csv_config": "config4x4.csv",
   "terreno_center": [240, 240],
-  "turbina_base": [250, 380],
+  "turbina_base": [210, 90],
   "positioning": {
-    "shift_x": 80.0,
-    "shift_y": 60.0,
-    "shift_row_x": 40.0,
-    "shift_row_y": 0.0
+    "shift_x": 170.0,
+    "shift_y": 95.0,
+    "shift_row_x": -175.0,
+    "shift_row_y": 95.0
   }
+}
 }

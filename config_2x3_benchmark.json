@@ -1,8 +1,8 @@
 {
   "grid": {
-    "rows": 3,
+    "rows": 2,
     "cols": 3,
-    "description": "Grid 3x3"
+    "description": "Grid 2x3 para benchmark"
   },
   "wind": {
     "direction": [
@@ -12,7 +12,7 @@
     "description": "Dire\u00e7\u00e3o do vento: oeste\u2192leste"
   },
   "wake_effects": {
-    "base_penalty": 8.0,
+    "base_penalty": 3.0,
     "distance_decay": 1.0,
     "description": "Penalidade de esteira: base_penalty - (dist\u00e2ncia \u00d7 distance_decay)"
   },
@@ -31,21 +31,21 @@
     "shots": 100,
     "gamma_range": "pi/2",
     "beta_range": "pi/4",
-    "description": "Explora\u00e7\u00e3o conservadora para teste r\u00e1pido"
+    "description": "Configura\u00e7\u00e3o para benchmark"
   },
   "constraints": {
     "enforce_constraints": false,
-    "min_turbines": 3,
-    "max_turbines": 3,
+    "min_turbines": null,
+    "max_turbines": null,
     "constraint_penalty": 10.0,
-    "description": "Exatamente 3 turbinas (restri\u00e7\u00e3o ATIVA)"
+    "description": "Sem restri\u00e7\u00f5es"
   },
   "display": {
     "show_interference_matrix": false,
-    "description": "Controla a exibi\u00e7\u00e3o da matriz completa de interfer\u00eancias"
+    "description": "N\u00e3o mostrar matriz para benchmark"
   },
   "aer": {
     "max_parallel_threads": 4,
-    "description": "Usar 4 n\u00facleos CPU para simula\u00e7\u00e3o AER"
+    "description": "Usar 4 n\u00facleos para benchmark"
   }
 }

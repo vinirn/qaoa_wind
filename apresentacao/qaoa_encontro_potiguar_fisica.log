@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2024.3.17)  22 AUG 2025 18:13
+This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2024.3.17)  22 AUG 2025 18:46
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1131,11 +1131,27 @@ LaTeX Font Info:    Font shape `T1/lmss/m/it' in size <5> not available
  [1
 
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map} <./logo-evento.jpg>]
-(./qaoa_encontro_potiguar_fisica.toc) [2
+(./qaoa_encontro_potiguar_fisica.toc)
+<portico_menor.png, id=58, 401.5pt x 328.22626pt>
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 165.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+ [2
 
-] [3
+ <./portico_menor.png>]
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 180.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+ [3
 
-] [4
+]
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 188.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+ [4
 
 ]
 \openout4 = `qaoa_encontro_potiguar_fisica.vrb'.
@@ -1150,118 +1166,207 @@ LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 3
 
 (/usr/share/texmf/tex/latex/lm/t1lmtt.fd
 File: t1lmtt.fd 2009/10/30 v1.6 Font defs for Latin Modern
-)) [5
+))
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 214.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+ [5
 
-] [6
+]
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 227.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+ [6
 
-] [7
+]
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 235.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+ [7
 
 ]
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10> on input line 243.
+(Font)              <10> on input line 253.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <7> on input line 243.
+(Font)              <7> on input line 253.
 LaTeX Font Info:    Font shape `T1/lmss/m/it' in size <10> not available
-(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 243.
+(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 253.
 LaTeX Font Info:    Font shape `T1/lmss/m/it' in size <7> not available
-(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 243.
+(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 253.
 
-Overfull \hbox (12.36676pt too wide) in paragraph at lines 243--243
+Overfull \hbox (12.36676pt too wide) in paragraph at lines 253--253
  [] 
  []
 
-LaTeX Font Info:    Trying to load font information for T1+lmr on input line 24
+LaTeX Font Info:    Trying to load font information for T1+lmr on input line 25
 3.
 (/usr/share/texmf/tex/latex/lm/t1lmr.fd
 File: t1lmr.fd 2009/10/30 v1.6 Font defs for Latin Modern
-) [8
+)
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 253.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+ [8
 
-] [9
+]
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 273.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+ [9
 
 ]
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <14.4> on input line 281.
+(Font)              <14.4> on input line 291.
 LaTeX Font Info:    Font shape `T1/lmss/m/it' in size <14.4> not available
-(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 281.
+(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 291.
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 291.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
  [10
 
-] [11
+]
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 308.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+ [11
 
 ]
-Overfull \hbox (11.80309pt too wide) in paragraph at lines 316--316
+Overfull \hbox (11.80309pt too wide) in paragraph at lines 326--326
  [][][] 
  []
 
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 326.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
 [12
 
-] [13
-
-] [14
+]
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 339.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+ [13
 
 ]
-<grid_4x4_inicial.png, id=145, 1444.39626pt x 1204.5pt>
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 347.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+ [14
+
+]
+<grid_4x4_inicial.png, id=148, 1444.39626pt x 1204.5pt>
 File: grid_4x4_inicial.png Graphic file (type png)
 <use grid_4x4_inicial.png>
-Package pdftex.def Info: grid_4x4_inicial.png  used on input line 370.
+Package pdftex.def Info: grid_4x4_inicial.png  used on input line 380.
 (pdftex.def)             Requested size: 169.01036pt x 140.93144pt.
 
-Overfull \vbox (1.54784pt too high) detected at line 370
+Overfull \vbox (1.54784pt too high) detected at line 380
  []
 
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 380.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
 [15
 
  <./grid_4x4_inicial.png>]
 <../images//grid_visualization_default_2x3_3turbinas_20250810_144135.png, id=15
-4, 570.6921pt x 450.483pt>
+6, 570.6921pt x 450.483pt>
 File: ../images//grid_visualization_default_2x3_3turbinas_20250810_144135.png G
 raphic file (type png)
 <use ../images//grid_visualization_default_2x3_3turbinas_20250810_144135.png>
 Package pdftex.def Info: ../images//grid_visualization_default_2x3_3turbinas_20
-250810_144135.png  used on input line 386.
+250810_144135.png  used on input line 396.
 (pdftex.def)             Requested size: 138.2795pt x 109.14919pt.
 <../images//grid_visualization_default_2x3_3turbinas_20250810_144138.png, id=15
-5, 570.6921pt x 450.483pt>
+7, 570.6921pt x 450.483pt>
 File: ../images//grid_visualization_default_2x3_3turbinas_20250810_144138.png G
 raphic file (type png)
 <use ../images//grid_visualization_default_2x3_3turbinas_20250810_144138.png>
 Package pdftex.def Info: ../images//grid_visualization_default_2x3_3turbinas_20
-250810_144138.png  used on input line 386.
+250810_144138.png  used on input line 396.
 (pdftex.def)             Requested size: 147.49782pt x 116.42856pt.
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 396.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
  [16
 
  <../images//grid_visualization_default_2x3_3turbinas_20250810_144135.png> <../
 images//grid_visualization_default_2x3_3turbinas_20250810_144138.png>]
-<../images//grid_visualization_4x4_4x4_8turbinas_20250810_124433.png, id=163, 3
+<../images//grid_visualization_4x4_4x4_8turbinas_20250810_124433.png, id=165, 3
 88.5717pt x 424.9476pt>
 File: ../images//grid_visualization_4x4_4x4_8turbinas_20250810_124433.png Graph
 ic file (type png)
 <use ../images//grid_visualization_4x4_4x4_8turbinas_20250810_124433.png>
 Package pdftex.def Info: ../images//grid_visualization_4x4_4x4_8turbinas_202508
-10_124433.png  used on input line 394.
+10_124433.png  used on input line 404.
 (pdftex.def)             Requested size: 239.68571pt x 262.12904pt.
 
-Overfull \vbox (42.33624pt too high) detected at line 394
+Overfull \vbox (42.33624pt too high) detected at line 404
  []
 
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 404.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
 [17
 
  <../images//grid_visualization_4x4_4x4_8turbinas_20250810_124433.png>]
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 412.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+
 [18
 
-] [19
+]
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 424.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+ [19
 
-] [20
+]
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 432.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+ [20
 
-] [21
+]
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 449.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+ [21
 
 ]
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <9> on input line 448.
+(Font)              <9> on input line 458.
 LaTeX Font Info:    Font shape `T1/lmss/m/it' in size <9> not available
-(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 448.
+(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 458.
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 458.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
  [22
 
-] [23
+]
+File: portico_menor.png Graphic file (type png)
+<use portico_menor.png>
+Package pdftex.def Info: portico_menor.png  used on input line 465.
+(pdftex.def)             Requested size: 64.38834pt x 52.63777pt.
+ [23
 
 ]
 \tf@nav=\write6
@@ -1279,13 +1384,13 @@ hanged.
 (rerunfilecheck)             Checksum: 070045EE3A7F9DFC29499FF1811FB027;948.
  ) 
 Here is how much of TeX's memory you used:
- 28628 strings out of 480154
- 558252 string characters out of 5893788
- 1016084 words of memory out of 5000000
- 45893 multiletter control sequences out of 15000+600000
+ 28731 strings out of 480154
+ 560716 string characters out of 5893788
+ 1017552 words of memory out of 5000000
+ 45995 multiletter control sequences out of 15000+600000
  577019 words of font info for 104 fonts, out of 8000000 for 9000
  61 hyphenation exceptions out of 8191
- 128i,14n,122p,433b,1466s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 128i,16n,122p,433b,1466s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/share/texmf/fonts/enc/dvips/lm/lm-ec.enc}{/usr/share/texmf/fonts/enc/dv
 ips/lm/lm-mathit.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm-mathsy.enc}{/usr/s
 hare/texmf/fonts/enc/dvips/lm/lm-rm.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm
@@ -1303,10 +1408,10 @@ c/lm/lmsy10.pfb></usr/share/texmf/fonts/type1/public/lm/lmsy7.pfb></usr/share/t
 exmf/fonts/type1/public/lm/lmsy8.pfb></usr/share/texmf/fonts/type1/public/lm/lm
 tt10.pfb></usr/share/texmf/fonts/type1/public/lm/lmtt9.pfb></usr/share/texlive/
 texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb>
-Output written on qaoa_encontro_potiguar_fisica.pdf (23 pages, 1617141 bytes).
+Output written on qaoa_encontro_potiguar_fisica.pdf (23 pages, 1686080 bytes).
 PDF statistics:
- 311 PDF objects out of 1000 (max. 8388607)
+ 313 PDF objects out of 1000 (max. 8388607)
  225 compressed objects within 3 object streams
  54 named destinations out of 1000 (max. 500000)
- 124 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 129 words of extra memory for PDF output out of 10000 (max. 10000000)
 

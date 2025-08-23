@@ -138,6 +138,16 @@
 
 \logo{}
 
+% Logo/imagem no rodapé, canto inferior direito (todas as páginas)
+% Requer tikz (já carregado acima)
+\addtobeamertemplate{footline}{}{
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[anchor=south east, xshift=0.12cm, yshift=-0.08cm]
+      at (current page.south east)
+      {\includegraphics[height=1.85cm]{portico_menor.png}};
+  \end{tikzpicture}%
+}
+
 \AtBeginSubsection[]{
   \frame<beamer>{
     \frametitle{Sumário}

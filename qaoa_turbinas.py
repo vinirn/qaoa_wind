@@ -2,7 +2,7 @@
 """
 QAOA para Otimização de Turbinas Eólicas - Qiskit 2.x
 Implementação moderna usando as APIs mais recentes
-Sistema configurável via arquivo JSON
+Agora com configuração padrão hardcoded (sem JSON obrigatório)
 """
 
 import numpy as np
@@ -25,10 +25,58 @@ from qiskit.circuit import Parameter
 from qiskit_aer.primitives import EstimatorV2
 from scipy.optimize import minimize
 
+# Configuração padrão hardcoded (equivalente ao antigo config.json 2x3)
+DEFAULT_CONFIG = {
+    "grid": {"rows": 2, "cols": 3, "description": "Grid de turbinas eólicas (hardcoded)"},
+    "wind": {"direction": [0, 1], "description": "[0,1] = oeste→leste, [1,0] = norte→sul"},
+    "wake_effects": {"base_penalty": 3.0, "distance_decay": 1.0, "description": "base - (dist × decay)"},
+    "score": {
+        "mode": "random",
+        "values": [4.0, 3.5, 3.0, 5.0, 4.5, 4.0],
+        "random_range": [3.0, 5.5],
+        "description": "'fixed' usa values; 'random' gera; 'uniform' usa constante"
+    },
+    "qaoa": {
+        "layers": 1,
+        "optimizer": "COBYLA",
+        "optimizer_options": {"maxiter": 50, "rhobeg": 0.5},
+        "shots": 1024,
+        "gamma_range": "pi",
+        "beta_range": "pi/2",
+        "description": "Exploração moderada padrão (hardcoded)"
+    },
+    "constraints": {
+        "max_turbines": None,
+        "min_turbines": None,
+        "enforce_constraints": False,
+        "constraint_penalty": 10.0,
+        "description": "Quantidade de turbinas; None = sem restrição"
+    },
+    "display": {
+        "show_interference_matrix": True,
+        "top_k_solutions": 5,
+        "description": "Exibição de matriz de interferências"
+    },
+    "aer": {
+        "max_parallel_threads": None,
+        "description": "vCPUs do simulador AER; None = automático"
+    }
+}
+
 class QAOATurbineOptimizer:
-    def __init__(self, config_file="config.json"):
-        """Inicializa o otimizador com configurações do arquivo"""
-        self.config = load_config(config_file)
+    def __init__(self, config_file: str | None = None, config: dict | None = None):
+        """Inicializa o otimizador.
+
+        Se 'config' for fornecido, usa-o diretamente (hardcoded).
+        Caso contrário, tenta carregar de 'config_file' (para compatibilidade).
+        """
+        if config is not None:
+            self.config = config
+            config_file = config_file or "hardcoded"
+        else:
+            # Compatibilidade com o fluxo antigo baseado em JSON
+            config_file = config_file or "config.json"
+            self.config = load_config(config_file)
         
         # Extrair parâmetros principais
         self.rows = self.config["grid"]["rows"]
@@ -235,7 +283,7 @@ def log_simulation_results(config, config_file, optimal_value, best_bitstring, c
     best_probability = best_count / sum(counts.values())
     
     # Calcular scores
-    optimizer_obj = QAOATurbineOptimizer(config_file)
+    optimizer_obj = QAOATurbineOptimizer(config_file=config_file, config=config)
     total_score = sum(solution[i] * optimizer_obj.score[i] for i in range(len(solution)))
     
     # Penalidades de esteira ativas e contagem de turbinas com penalty
@@ -400,21 +448,11 @@ def run_optimization(optimizer):
         print("\n💔 Execução interrompida devido ao erro.")
         sys.exit(1)
 
-# Instanciar o otimizador com arquivo apropriado
-config_file = get_config_file()
-optimizer = QAOATurbineOptimizer(config_file)
-
-# Exibir matriz de interferências se configurado
-if optimizer.config.get("display", {}).get("show_interference_matrix", True):
-    display_interference_matrix(optimizer)
-else:
-    print("📊 Matriz de interferências: OCULTA (configurado no JSON)")
-    print(f"Total de {len(optimizer.wake_penalties)} possíveis interferências no grid {optimizer.rows}x{optimizer.cols}")
-
-# Manter compatibilidade com código existente
-score = optimizer.score
-positions_coords = optimizer.positions_coords
-wake_penalties = optimizer.wake_penalties
+# Variáveis globais populadas no main
+optimizer = None
+score = None
+positions_coords = None
+wake_penalties = None
 
 def create_cost_hamiltonian():
     """
@@ -568,7 +606,7 @@ def run_qaoa(p, max_iter=50, use_ibm_quantum=False, args=None, config_file=None)
     
     # Plotar circuito quântico se solicitado
     if args and getattr(args, 'plot_quantum', False):
-        plot_quantum_circuit(ansatz, config_file or 'config.json')
+        plot_quantum_circuit(ansatz, config_file or 'hardcoded')
     
     # Configurar EstimatorV2 baseado no modo
     shots = optimizer.config.get("qaoa", {}).get("shots", 1024)
@@ -916,7 +954,8 @@ def analyze_results(counts):
     best_probability = best_count / sum(counts.values())
     
     print(f"\nMelhor solução encontrada: {best_bitstring}")
-    print(f"Probabilidade: {best_probability:.3f} ({best_count}/1024 medições)")
+    total_shots = sum(counts.values())
+    print(f"Probabilidade: {best_probability:.3f} ({best_count}/{total_shots} medições)")
     
     # Converter para formato de grid
     solution = bitstring_to_grid(best_bitstring)
@@ -974,10 +1013,22 @@ def analyze_results(counts):
         sc = score[i] if solution[i] == 1 else 0
         print(f"   Pos ({row},{col}): {status} Score: {sc:.1f}")
         
-    # Top 5 soluções com visualização
-    print(f"\n🏆 TOP 5 SOLUÇÕES MAIS PROVÁVEIS:")
+    # Top-N soluções com visualização (configurável)
+    top_k = optimizer.config.get("display", {}).get("top_k_solutions", 5)
+    try:
+        top_k = int(top_k)
+    except Exception:
+        top_k = 5
+    if top_k is None or top_k <= 0:
+        top_k = 0
+
+    if top_k > 0:
+        print(f"\n🏆 TOP {top_k} SOLUÇÕES MAIS PROVÁVEIS:")
+    else:
+        print(f"\n🏆 RANKING DE SOLUÇÕES DESATIVADO (top_k_solutions={top_k})")
+
     sorted_counts = sorted(counts.items(), key=lambda x: x[1], reverse=True)
-    for i, (bitstring, count) in enumerate(sorted_counts[:5]):
+    for i, (bitstring, count) in enumerate(sorted_counts[:top_k] if top_k > 0 else []):
         prob = count / sum(counts.values())
         value = evaluate_solution(bitstring, score, wake_penalties, optimizer)
         sol = bitstring_to_grid(bitstring)
@@ -1025,10 +1076,18 @@ if __name__ == "__main__":
         list_available_configs()
         sys.exit(0)
     
-    # Inicializar com configuração especificada
-    optimizer = QAOATurbineOptimizer(args.config)
+    # Inicializar usando configuração HARDCODED (ignora JSON)
+    optimizer = QAOATurbineOptimizer(config_file="hardcoded", config=DEFAULT_CONFIG)
     score = optimizer.score
     wake_penalties = optimizer.wake_penalties
+    positions_coords = optimizer.positions_coords
+
+    # Exibir matriz de interferências conforme configuração
+    if optimizer.config.get("display", {}).get("show_interference_matrix", True):
+        display_interference_matrix(optimizer)
+    else:
+        print("📊 Matriz de interferências: OCULTA (config)")
+        print(f"Total de {len(optimizer.wake_penalties)} possíveis interferências no grid {optimizer.rows}x{optimizer.cols}")
     
     # Se solicitado benchmark, executar e sair
     if args.benchmark_hamiltonian:
@@ -1059,11 +1118,13 @@ if __name__ == "__main__":
         print(f"\n🔧 QAOA: {p_layers} camadas, {max_iterations} iterações do otimizador")
         
         # Executar QAOA
-        counts, optimal_value, cost_history, execution_time, param_hist = run_qaoa(p=p_layers, max_iter=max_iterations, use_ibm_quantum=use_ibm, args=args, config_file=args.config)
+        counts, optimal_value, cost_history, execution_time, param_hist = run_qaoa(
+            p=p_layers, max_iter=max_iterations, use_ibm_quantum=use_ibm, args=args, config_file="hardcoded"
+        )
         
         # Gerar gráficos somente se --plot for passado
         if getattr(args, 'plot', False):
-            cfg_name = optimizer.config.get('grid', {}).get('description', args.config)
+            cfg_name = optimizer.config.get('grid', {}).get('description', 'hardcoded')
             rhobeg_used = param_hist.get('rhobeg')
             plot_cost_evolution(cost_history, cfg_name, rhobeg=rhobeg_used)
             plot_gamma_beta_trajectory(param_hist.get('gamma_history', []), param_hist.get('beta_history', []), cfg_name, rhobeg=rhobeg_used)
@@ -1078,7 +1139,7 @@ if __name__ == "__main__":
             wake_penalty = sum(solution[i] * solution[j] * penalty 
                              for (i, j), penalty in optimizer.wake_penalties.items())
             
-            create_grid_visualization(solution, optimizer, args.config, 
+            create_grid_visualization(solution, optimizer, 'hardcoded', 
                                     best_probability, total_score, wake_penalty)
         
         analyze_results(counts)
@@ -1087,7 +1148,7 @@ if __name__ == "__main__":
         best_bitstring = max(counts, key=counts.get)
         log_simulation_results(
             config=optimizer.config, 
-            config_file=args.config, 
+            config_file='hardcoded', 
             optimal_value=optimal_value,
             best_bitstring=best_bitstring,
             cost_history=cost_history, 

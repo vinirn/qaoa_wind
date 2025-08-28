@@ -1,8 +1,0 @@
-\babel@toc {brazil}{}\relax 
-\beamer@sectionintoc {1}{Motivação e objetivos}{3}{0}{1}
-\beamer@sectionintoc {2}{Fundamentos}{6}{0}{2}
-\beamer@sectionintoc {3}{Metodologia}{13}{0}{3}
-\beamer@sectionintoc {4}{Resultados}{15}{0}{4}
-\beamer@sectionintoc {5}{Conclusões e próximos passos}{19}{0}{5}
-\beamer@sectionintoc {6}{Demonstração}{21}{0}{6}
-\beamer@sectionintoc {7}{Agradecimentos e referências}{21}{0}{7}

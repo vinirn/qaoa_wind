@@ -14,7 +14,7 @@ Thank you for improving this QAOA wind‑turbine optimization project. Please re
 ## Development
 - Main code in `qaoa_turbinas.py`; helpers/CLI and plotting in `utils.py`.
 - Scenarios live in `config*.json` — keep clear names and descriptions.
-- Optional editable install: `pip install -e .` then `qaoa-turbinas -c config_vertical.json`.
+- Removed editable install: run with `./run_qaoa.sh` or `python qaoa_turbinas.py` (uses hardcoded config).
 
 ## Testing
 - No formal suite yet. Validate with small configs and review plots in `images/`.
